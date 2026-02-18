@@ -1,0 +1,280 @@
+import React, { useState } from 'react';
+import { useToast } from '../components/ui/Toast';
+import {
+    Calendar,
+    Table2,
+    BarChart3,
+    Download,
+    ChevronDown,
+    ChevronRight,
+    TrendingUp,
+    TrendingDown,
+    DollarSign,
+    Percent,
+    Receipt,
+    Briefcase,
+    CircleDollarSign
+} from 'lucide-react';
+
+/* ─── Stat Card ─── */
+/* eslint-disable react/prop-types */
+const StatCard = ({ label, value, change, icon: Icon, iconBg }) => {
+    const isPositive = change > 0;
+    return (
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">{label}</span>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconBg}`}>
+                    <Icon className="w-4 h-4 text-white" />
+                </div>
+            </div>
+            <div className="flex items-end gap-2">
+                <span className="text-2xl font-bold text-slate-800 dark:text-white">{value}</span>
+                <span className={`text-xs font-bold mb-1 ${isPositive ? 'text-emerald-600' : 'text-rose-500'}`}>
+                    {isPositive ? '+' : ''}{change}%
+                </span>
+            </div>
+        </div>
+    );
+};
+
+/* ─── Category Sidebar ─── */
+const categories = [
+    {
+        label: 'Financials',
+        icon: CircleDollarSign,
+        children: ['Profit and Loss', 'Balance Sheet', 'Cash Flow'],
+    },
+    { label: 'Tax', icon: Receipt, children: [] },
+    { label: 'Sales', icon: Briefcase, children: [] },
+    { label: 'Payroll', icon: DollarSign, children: [] },
+];
+
+const CategoryNav = ({ active, onSelect }) => {
+    const [expanded, setExpanded] = useState({ Financials: true });
+
+    return (
+        <div className="space-y-1">
+            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">Categories</p>
+            {categories.map((cat) => (
+                <div key={cat.label}>
+                    <button
+                        onClick={() => setExpanded((p) => ({ ...p, [cat.label]: !p[cat.label] }))}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    >
+                        <cat.icon className="w-4 h-4" />
+                        <span className="flex-1 text-left">{cat.label}</span>
+                        {cat.children.length > 0 && (
+                            expanded[cat.label]
+                                ? <ChevronDown className="w-3.5 h-3.5" />
+                                : <ChevronRight className="w-3.5 h-3.5" />
+                        )}
+                    </button>
+                    {expanded[cat.label] && cat.children.length > 0 && (
+                        <div className="ml-7 space-y-0.5 mt-0.5">
+                            {cat.children.map((child) => (
+                                <button
+                                    key={child}
+                                    onClick={() => onSelect(child)}
+                                    className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${active === child
+                                        ? 'text-primary font-semibold bg-primary/5'
+                                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                        }`}
+                                >
+                                    {child}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+};
+
+/* ─── Financial Detail Row ─── */
+const DetailRow = ({ name, q1, q2, q3, total, bold, indent = 0 }) => (
+    <tr className={`border-b border-slate-100 dark:border-slate-800 last:border-0 ${bold ? 'bg-slate-50/50 dark:bg-slate-800/20' : ''}`}>
+        <td className={`px-5 py-3 text-sm ${bold ? 'font-bold text-slate-800 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`} style={{ paddingLeft: `${20 + indent * 20}px` }}>
+            {bold ? `• ${name}` : name}
+        </td>
+        <td className={`px-5 py-3 text-sm text-right ${bold ? 'font-bold text-slate-800 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{q1}</td>
+        <td className={`px-5 py-3 text-sm text-right ${bold ? 'font-bold text-slate-800 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{q2}</td>
+        <td className={`px-5 py-3 text-sm text-right ${bold ? 'font-bold text-slate-800 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{q3}</td>
+        <td className={`px-5 py-3 text-sm text-right font-bold ${bold ? 'text-slate-800 dark:text-white' : 'text-slate-800 dark:text-slate-200'}`}>{total}</td>
+    </tr>
+);
+
+
+export default function Reports() {
+    const toast = useToast();
+    const [activeReport, setActiveReport] = useState('Profit and Loss');
+    const [viewMode, setViewMode] = useState('table');
+
+    /* Simple SVG chart data */
+    const incomeData = [25, 32, 35, 28, 42, 48, 45, 52, 47, 55, 50, 58];
+    const expenseData = [18, 22, 25, 20, 28, 32, 30, 35, 32, 38, 34, 40];
+
+    const financialDetails = [
+        { name: 'Income', q1: '$35,000.00', q2: '$42,500.00', q3: '$47,000.00', total: '$124,500.00', bold: true },
+        { name: 'Sales – Service Revenue', q1: '$20,000.00', q2: '$25,000.00', q3: '$28,000.00', total: '$73,000.00', indent: 1 },
+        { name: 'Sales – Product Revenue', q1: '$15,000.00', q2: '$17,500.00', q3: '$19,000.00', total: '$51,500.00', indent: 1 },
+        { name: 'Cost of Goods Sold', q1: '$12,000.00', q2: '$15,200.00', q3: '$16,500.00', total: '$43,700.00', bold: true },
+        { name: 'Gross Profit', q1: '$23,000.00', q2: '$27,300.00', q3: '$30,500.00', total: '$80,800.00', bold: true },
+        { name: 'Operating Expenses', q1: '$10,500.00', q2: '$12,800.00', q3: '$15,300.00', total: '$38,600.00', bold: true },
+    ];
+
+    return (
+        <div className="flex flex-col gap-6 pb-12">
+            {/* ── Header ── */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div className="flex items-center gap-4">
+                    <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Profit and Loss</h1>
+                    <button onClick={() => toast('Date range picker coming soon', 'info')} className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 shadow-sm">
+                        <Calendar className="w-3.5 h-3.5" />
+                        Jan 1, 2023 – Dec 31, 2023
+                        <ChevronDown className="w-3 h-3" />
+                    </button>
+                </div>
+                <div className="flex items-center gap-3">
+                    {/* View Toggle */}
+                    <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+                        <button
+                            onClick={() => setViewMode('table')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'table' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500'
+                                }`}
+                        >
+                            <Table2 className="w-3.5 h-3.5" /> Table
+                        </button>
+                        <button
+                            onClick={() => setViewMode('chart')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'chart' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500'
+                                }`}
+                        >
+                            <BarChart3 className="w-3.5 h-3.5" /> Chart
+                        </button>
+                    </div>
+                    <button onClick={() => toast('Report exported to PDF', 'success')} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
+                        <Download className="w-4 h-4" /> Export
+                    </button>
+                    <button onClick={() => toast('Report generated successfully!', 'success')} className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium shadow-sm shadow-primary/20 transition-all">
+                        Run Report
+                    </button>
+                </div>
+            </div>
+
+            {/* ── Stat Cards ── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+                <StatCard label="Total Income" value="$124,500.00" change={10.5} icon={TrendingUp} iconBg="bg-emerald-500" />
+                <StatCard label="Total Expenses" value="$82,300.00" change={4.2} icon={TrendingDown} iconBg="bg-rose-500" />
+                <StatCard label="Net Profit" value="$42,200.00" change={8.7} icon={DollarSign} iconBg="bg-primary" />
+                <StatCard label="Profit Margin" value="33.9%" change={2.5} icon={Percent} iconBg="bg-violet-500" />
+            </div>
+
+            {/* ── Main Layout: Sidebar + Content ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                {/* Category Sidebar */}
+                <div className="lg:col-span-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 h-fit">
+                    <CategoryNav active={activeReport} onSelect={setActiveReport} />
+                </div>
+
+                {/* Content Area */}
+                <div className="lg:col-span-4 flex flex-col gap-6">
+                    {/* Revenue vs. Expenses Chart */}
+                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="font-bold text-slate-800 dark:text-white">Revenue vs. Expenses</h3>
+                            <div className="flex gap-4 text-xs">
+                                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-primary"></span> Income</span>
+                                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-400"></span> Expenses</span>
+                            </div>
+                        </div>
+
+                        <div className="h-48 relative">
+                            <svg viewBox="0 0 440 160" className="w-full h-full" preserveAspectRatio="none">
+                                {/* Grid lines */}
+                                {[0, 40, 80, 120, 160].map((y) => (
+                                    <line key={y} x1="0" y1={y} x2="440" y2={y} stroke="currentColor" className="text-slate-100 dark:text-slate-800" strokeWidth="0.5" />
+                                ))}
+                                {/* Income line */}
+                                <polyline
+                                    fill="none"
+                                    stroke="#1173d4"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    points={incomeData.map((p, i) => `${(i / 11) * 430 + 5},${160 - p * 2.6}`).join(' ')}
+                                />
+                                {/* Income area */}
+                                <polygon
+                                    fill="url(#incomeGrad)"
+                                    opacity="0.1"
+                                    points={`5,160 ${incomeData.map((p, i) => `${(i / 11) * 430 + 5},${160 - p * 2.6}`).join(' ')} 435,160`}
+                                />
+                                {/* Expense line */}
+                                <polyline
+                                    fill="none"
+                                    stroke="#f87171"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    points={expenseData.map((p, i) => `${(i / 11) * 430 + 5},${160 - p * 2.6}`).join(' ')}
+                                />
+                                {/* Expense area */}
+                                <polygon
+                                    fill="url(#expenseGrad)"
+                                    opacity="0.08"
+                                    points={`5,160 ${expenseData.map((p, i) => `${(i / 11) * 430 + 5},${160 - p * 2.6}`).join(' ')} 435,160`}
+                                />
+                                <defs>
+                                    <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#1173d4" />
+                                        <stop offset="100%" stopColor="#1173d4" stopOpacity="0" />
+                                    </linearGradient>
+                                    <linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#f87171" />
+                                        <stop offset="100%" stopColor="#f87171" stopOpacity="0" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                        </div>
+                        <div className="flex justify-between mt-2 text-[10px] text-slate-400 font-medium px-1">
+                            {['Jan', 'Feb', 'Mar', 'Apr (Current)', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'].map((m, i) => (
+                                <span key={i} className={m.includes('Current') ? 'text-primary font-bold' : ''}>{m.replace(' (Current)', '')}</span>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Financial Details Table */}
+                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                            <h3 className="font-bold text-slate-800 dark:text-white">Financial Details</h3>
+                            <button onClick={() => toast('Financial details exported to CSV', 'success')} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                <Download className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                    <tr>
+                                        <th className="px-5 py-3">Account Name</th>
+                                        <th className="px-5 py-3 text-right">Q1 2023</th>
+                                        <th className="px-5 py-3 text-right">Q2 2023</th>
+                                        <th className="px-5 py-3 text-right">Q3 2023</th>
+                                        <th className="px-5 py-3 text-right">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {financialDetails.map((row, i) => (
+                                        <DetailRow key={i} {...row} />
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
