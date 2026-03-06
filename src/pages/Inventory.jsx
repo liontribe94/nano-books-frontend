@@ -4,90 +4,67 @@ import { useToast } from '../components/ui/Toast';
 import { api } from '../lib/api';
 import {
     Search,
-    Pencil,
     Plus,
     Package,
     TrendingUp,
-    Clock,
-    CalendarCheck,
     DollarSign,
     AlertTriangle,
     CheckCircle2,
     ChevronLeft,
     ChevronRight,
-    Filter,
-    ArrowUpRight,
-    ArrowDownRight,
-    RotateCcw,
-    ShoppingCart,
-    Loader2
+    ArrowUpDown,
+    Eye,
+    Pencil,
+    Trash2,
+    Loader2,
+    BoxSelect
 } from 'lucide-react';
 
 /* ─── Stat Card ─── */
-const StatCard = ({ label, value, badge, icon: Icon, iconColor = 'text-primary', badgeColor }) => (
-    <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+const StatCard = ({ label, value, icon: Icon, iconColor = 'text-primary', badgeColor }) => (
+    <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
         <div className="flex items-center justify-between">
             <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">{label}</span>
-            {Icon && <Icon className={`w-4 h-4 ${iconColor}`} />}
+            {Icon && <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconColor} bg-opacity-10`}>
+                <Icon className="w-4 h-4" />
+            </div>}
         </div>
         <div className="flex items-center gap-2 mt-2">
             <span className="text-3xl font-bold text-slate-800 dark:text-white">{value}</span>
-            {badge && (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeColor || 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600'}`}>
-                    {badge}
-                </span>
-            )}
         </div>
     </div>
 );
 
-/* ─── Type Badge ─── */
-const TypeBadge = ({ type }) => {
-    const cfg = {
-        Sale: { bg: 'bg-red-50 dark:bg-red-500/10 text-red-600', icon: ShoppingCart },
-        Return: { bg: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600', icon: RotateCcw },
-        'Manual Adj': { bg: 'bg-purple-50 dark:bg-purple-500/10 text-purple-600', icon: Pencil },
-        Purchase: { bg: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600', icon: Package },
-    }[type] || { bg: 'bg-slate-100 text-slate-500', icon: Package };
-
-    const Icon = cfg.icon;
+/* ─── Stock Status Badge ─── */
+const StockBadge = ({ quantity, reorderPoint }) => {
+    if (quantity <= 0) {
+        return (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-red-50 dark:bg-red-500/10 text-red-600">
+                <AlertTriangle className="w-3 h-3" /> Out of Stock
+            </span>
+        );
+    }
+    if (quantity <= (reorderPoint || 5)) {
+        return (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-amber-50 dark:bg-amber-500/10 text-amber-600">
+                <AlertTriangle className="w-3 h-3" /> Low Stock
+            </span>
+        );
+    }
     return (
-        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${cfg.bg}`}>
-            <Icon className="w-3 h-3" /> {type}
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600">
+            <CheckCircle2 className="w-3 h-3" /> In Stock
         </span>
     );
 };
 
-/* ─── Movement Row ─── */
-const MovementRow = ({ date, reference, type, adjustment, balance }) => {
-    const isPositive = adjustment > 0;
-    return (
-        <tr className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
-            <td className="px-5 py-4 text-sm text-slate-500 whitespace-nowrap">{date}</td>
-            <td className="px-5 py-4">
-                <span className="text-sm font-medium text-primary">{reference}</span>
-            </td>
-            <td className="px-5 py-4"><TypeBadge type={type} /></td>
-            <td className="px-5 py-4 text-right">
-                <span className={`text-sm font-bold ${isPositive ? 'text-emerald-600' : 'text-rose-500'}`}>
-                    {isPositive ? '+' : ''}{adjustment}
-                </span>
-            </td>
-            <td className="px-5 py-4 text-right text-sm font-bold text-slate-800 dark:text-slate-200">
-                {balance.toLocaleString()}
-            </td>
-        </tr>
-    );
-};
-
-
 export default function Inventory() {
     const navigate = useNavigate();
     const toast = useToast();
-    const [activeTab, setActiveTab] = useState(1); // Inventory History active
-    const tabs = ['General Info', 'Inventory History', 'Supplier Details'];
     const [loading, setLoading] = useState(true);
-    const [movements, setMovements] = useState([]);
+    const [products, setProducts] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
     const [stats, setStats] = useState({
         onHand: 0,
         allocated: 0,
@@ -96,57 +73,64 @@ export default function Inventory() {
         value: 0
     });
 
+    const ITEMS_PER_PAGE = 10;
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [productsRes, statsRes] = await Promise.all([
+                api.inventory.getAll().catch(() => ({ data: [] })),
+                api.inventory.getStats().catch(() => ({
+                    data: { onHand: 0, allocated: 0, available: 0, lowStockThreshold: 10, value: 0 }
+                }))
+            ]);
+
+            const productsData = productsRes?.data || productsRes || [];
+            setProducts(Array.isArray(productsData) ? productsData : []);
+
+            const statsData = statsRes?.data || statsRes;
+            setStats({
+                onHand: statsData?.onHand || 0,
+                allocated: statsData?.allocated || 0,
+                available: statsData?.available || 0,
+                lowStockThreshold: statsData?.lowStockThreshold || 10,
+                value: statsData?.value || 0
+            });
+        } catch (error) {
+            console.error('Inventory fetch error:', error);
+            toast('Failed to load inventory data', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchInventoryData = async () => {
-            setLoading(true);
-            try {
-                // In a real app, we might get this ID from URL params, defaulting to a specific product for this demo page
-                const productId = 'prod_123';
-
-                const [productStats, productMovements] = await Promise.all([
-                    api.inventory.getStats().catch(() => ({
-                        onHand: 1248, allocated: 82, available: 1166, lowStockThreshold: 50, value: 43555.50
-                    })),
-                    api.inventory.getMovements(productId).catch(() => [])
-                ]);
-
-                // Update stats if endpoint returns aggregate or specific product stats
-                // For this demo, we'll assume stats returns the values we need directly or fallback
-                setStats({
-                    onHand: productStats.onHand || 1248,
-                    allocated: productStats.allocated || 82,
-                    available: productStats.available || 1166,
-                    lowStockThreshold: productStats.lowStockThreshold || 50,
-                    value: productStats.value || 43555.50
-                });
-
-                // Map movements
-                const mappedMovements = Array.isArray(productMovements) && productMovements.length > 0 ? productMovements.map(m => ({
-                    date: new Date(m.date).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-                    reference: m.reference,
-                    type: m.type,
-                    adjustment: m.quantity,
-                    balance: m.balanceAfter
-                })) : [
-                    { date: 'Oct 24, 14:30', reference: '#SO-92102', type: 'Sale', adjustment: -12, balance: 1248 },
-                    { date: 'Oct 23, 09:15', reference: '#RT-112', type: 'Return', adjustment: +2, balance: 1260 },
-                    { date: 'Oct 21, 16:45', reference: '#MANUAL-04', type: 'Manual Adj', adjustment: -5, balance: 1258 },
-                    { date: 'Oct 18, 11:30', reference: '#PO-8821', type: 'Purchase', adjustment: +100, balance: 1263 },
-                    { date: 'Oct 15, 10:05', reference: '#SO-91903', type: 'Sale', adjustment: -60, balance: 793 },
-                ];
-                setMovements(mappedMovements);
-
-            } catch (error) {
-                console.error("Inventory fetch error", error);
-                toast('Failed to load inventory data', 'error');
-                // Fallback handled in catch blocks above or defaults
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchInventoryData();
+        fetchData();
     }, []);
+
+    const handleDelete = async (id, name) => {
+        if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
+        try {
+            await api.inventory.delete(id);
+            toast('Product deleted successfully', 'success');
+            fetchData();
+        } catch (error) {
+            console.error('Delete error:', error);
+            toast('Failed to delete product', 'error');
+        }
+    };
+
+    /* ─── Filtering & Pagination ─── */
+    const filteredProducts = products.filter(p =>
+        (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.sku || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+    const paginatedProducts = filteredProducts.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
 
     if (loading) {
         return (
@@ -156,12 +140,9 @@ export default function Inventory() {
         );
     }
 
-    /* Simple bar chart data for 30-day trend */
-    const barData = [40, 55, 50, 65, 60, 75, 70, 85, 90, 80, 95, 100];
-
     return (
         <div className="flex flex-col gap-6 pb-12">
-            {/* ── Breadcrumb + Header ── */}
+            {/* ── Header ── */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <div className="flex items-center gap-2 text-xs text-slate-400 uppercase font-bold tracking-wider mb-2">
@@ -169,177 +150,170 @@ export default function Inventory() {
                         <span>›</span>
                         <span>Products</span>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Professional Ergo Chair</h1>
-                        <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-mono text-slate-500">SKU-2064-1-8</span>
-                    </div>
+                    <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Inventory Management</h1>
+                    <p className="text-sm text-slate-500 mt-1">Track and manage your product inventory</p>
                 </div>
-                <div className="flex gap-3">
-                    <button onClick={() => toast('Edit product form coming soon', 'info')} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
-                        <Pencil className="w-4 h-4" />
-                        Edit Product
-                    </button>
-                    <button onClick={() => navigate('/inventory/new')} className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium shadow-sm shadow-primary/20 transition-all">
-                        <Plus className="w-4 h-4" />
-                        Add Stock
-                    </button>
-                </div>
+                <button
+                    onClick={() => navigate('/inventory/new')}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium shadow-sm shadow-primary/20 transition-all"
+                >
+                    <Plus className="w-4 h-4" />
+                    Add Product
+                </button>
             </div>
 
             {/* ── Stats Cards ── */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-                <StatCard label="On Hand" value={stats.onHand.toLocaleString()} badge="+10%" icon={Package} />
-                <StatCard label="Allocated" value={stats.allocated} icon={ShoppingCart} iconColor="text-slate-400" />
-                <StatCard label="Available" value={stats.available.toLocaleString()} icon={CheckCircle2} iconColor="text-emerald-500" />
+                <StatCard label="Total Products" value={products.length} icon={Package} iconColor="text-primary" />
+                <StatCard label="On Hand" value={stats.onHand.toLocaleString()} icon={BoxSelect} iconColor="text-blue-500" />
+                <StatCard label="Low Stock Items" value={products.filter(p => (p.stockQuantity || 0) <= (p.reorderPoint || 5) && (p.stockQuantity || 0) > 0).length} icon={AlertTriangle} iconColor="text-amber-500" />
                 <StatCard
-                    label="Low Stock Threshold"
-                    value={stats.lowStockThreshold}
-                    icon={AlertTriangle}
-                    iconColor="text-amber-500"
+                    label="Inventory Value"
+                    value={`$${stats.value.toLocaleString()}`}
+                    icon={DollarSign}
+                    iconColor="text-emerald-500"
                 />
             </div>
 
-            {/* ── Tabs ── */}
-            <div className="flex gap-1 border-b border-slate-200 dark:border-slate-800">
-                {tabs.map((tab, i) => (
-                    <button
-                        key={i}
-                        onClick={() => setActiveTab(i)}
-                        className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === i
-                            ? 'border-primary text-primary'
-                            : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                            }`}
-                    >
-                        {tab}
-                    </button>
-                ))}
-            </div>
-
-            {/* ── Main Content ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Movement Log (2 cols) */}
-                <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                    <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-3 justify-between items-center">
-                        <h3 className="font-bold text-slate-800 dark:text-white">Movement Log</h3>
-                        <div className="flex items-center gap-2">
-                            <div className="relative w-44">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                                <input
-                                    type="text"
-                                    placeholder="Filter history..."
-                                    className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                                <tr>
-                                    <th className="px-5 py-3">Date</th>
-                                    <th className="px-5 py-3">Reference</th>
-                                    <th className="px-5 py-3">Type</th>
-                                    <th className="px-5 py-3 text-right">Adjustment</th>
-                                    <th className="px-5 py-3 text-right">Balance</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {movements.map((m, i) => (
-                                    <MovementRow key={i} {...m} />
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm text-slate-500">
-                        <span>Showing 5 of 147 movements</span>
-                        <div className="flex items-center gap-1">
-                            <button className="px-2 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800 text-xs disabled:opacity-50" disabled>Previous</button>
-                            <button className="px-2.5 py-1 bg-primary text-white rounded text-xs font-bold">1</button>
-                            <button onClick={() => toast('Loading page 2...', 'info')} className="px-2.5 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800 text-xs">2</button>
-                            <button onClick={() => toast('Loading next page...', 'info')} className="px-2 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800 text-xs">Next</button>
+            {/* ── Search & Filter Bar ── */}
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-3 justify-between items-center">
+                    <h3 className="font-bold text-slate-800 dark:text-white">All Products</h3>
+                    <div className="flex items-center gap-2">
+                        <div className="relative w-64">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                            <input
+                                type="text"
+                                placeholder="Search products..."
+                                value={searchQuery}
+                                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                                className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                            />
                         </div>
                     </div>
                 </div>
 
-                {/* Right Column */}
-                <div className="flex flex-col gap-6">
-                    {/* 30-Day Trend */}
-                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-5">
-                        <div className="flex items-center justify-between mb-4">
-                            <h4 className="font-bold text-sm text-slate-800 dark:text-white">30-Day Trend</h4>
-                            <span className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
-                                <TrendingUp className="w-3.5 h-3.5" /> +4.2% Growth
+                {/* ── Products Table ── */}
+                {filteredProducts.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                        <Package className="w-12 h-12 mb-3 opacity-50" />
+                        <p className="font-medium">{searchQuery ? 'No products match your search' : 'No products yet'}</p>
+                        <p className="text-sm mt-1">
+                            {searchQuery ? 'Try a different search term' : 'Click "Add Product" to get started'}
+                        </p>
+                    </div>
+                ) : (
+                    <>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                    <tr>
+                                        <th className="px-5 py-3">Product</th>
+                                        <th className="px-5 py-3">SKU</th>
+                                        <th className="px-5 py-3 text-right">Cost</th>
+                                        <th className="px-5 py-3 text-right">Price</th>
+                                        <th className="px-5 py-3 text-center">Stock</th>
+                                        <th className="px-5 py-3">Status</th>
+                                        <th className="px-5 py-3 text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {paginatedProducts.map((product) => (
+                                        <tr
+                                            key={product.id}
+                                            className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors cursor-pointer"
+                                            onClick={() => navigate(`/inventory/${product.id}`)}
+                                        >
+                                            <td className="px-5 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                                        <Package className="w-4 h-4 text-primary" />
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-sm font-semibold text-slate-800 dark:text-white block">{product.name}</span>
+                                                        {product.description && (
+                                                            <span className="text-xs text-slate-400 line-clamp-1">{product.description}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[11px] font-mono text-slate-500">{product.sku}</span>
+                                            </td>
+                                            <td className="px-5 py-4 text-right text-sm text-slate-600 dark:text-slate-400">
+                                                ${(product.cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </td>
+                                            <td className="px-5 py-4 text-right text-sm font-semibold text-slate-800 dark:text-white">
+                                                ${(product.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </td>
+                                            <td className="px-5 py-4 text-center">
+                                                <span className="text-sm font-bold text-slate-800 dark:text-white">
+                                                    {(product.stockQuantity || 0).toLocaleString()}
+                                                </span>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <StockBadge quantity={product.stockQuantity || 0} reorderPoint={product.reorderPoint} />
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                                    <button
+                                                        onClick={() => navigate(`/inventory/${product.id}`)}
+                                                        className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 transition-colors"
+                                                        title="View Details"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(product.id, product.name)}
+                                                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* ── Pagination ── */}
+                        <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm text-slate-500">
+                            <span>
+                                Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredProducts.length)} of {filteredProducts.length} products
                             </span>
-                        </div>
-
-                        {/* Simple SVG bar chart */}
-                        <div className="h-32">
-                            <svg viewBox="0 0 240 100" className="w-full h-full" preserveAspectRatio="none">
-                                {barData.map((val, i) => (
-                                    <rect
-                                        key={i}
-                                        x={i * 20 + 2}
-                                        y={100 - val}
-                                        width="14"
-                                        height={val}
-                                        rx="2"
-                                        className="fill-primary/70 hover:fill-primary transition-colors"
-                                    />
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-2 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800 text-xs disabled:opacity-50 flex items-center gap-1"
+                                >
+                                    <ChevronLeft className="w-3 h-3" /> Previous
+                                </button>
+                                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`px-2.5 py-1 rounded text-xs font-bold ${currentPage === page
+                                                ? 'bg-primary text-white'
+                                                : 'border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                            }`}
+                                    >
+                                        {page}
+                                    </button>
                                 ))}
-                            </svg>
-                        </div>
-                        <div className="flex justify-between mt-2 text-[9px] text-slate-400 font-medium">
-                            <span>Sep 20</span>
-                            <span>Sep 10</span>
-                            <span>Today</span>
-                        </div>
-                    </div>
-
-                    {/* Stock Insights */}
-                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-5">
-                        <h4 className="font-bold text-sm text-slate-800 dark:text-white mb-4">Stock Insights</h4>
-
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <span className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                                    <Clock className="w-4 h-4 text-slate-400" />
-                                    Avg. Turnaround
-                                </span>
-                                <span className="text-sm font-bold text-slate-800 dark:text-white">14.3 Days</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                                    <CalendarCheck className="w-4 h-4 text-slate-400" />
-                                    Last Restock
-                                </span>
-                                <span className="text-sm font-bold text-slate-800 dark:text-white">6 Days Ago</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                                    <DollarSign className="w-4 h-4 text-slate-400" />
-                                    Inventory Value
-                                </span>
-                                <span className="text-sm font-bold text-slate-800 dark:text-white">${stats.value.toLocaleString()}</span>
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages || totalPages === 0}
+                                    className="px-2 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800 text-xs disabled:opacity-50 flex items-center gap-1"
+                                >
+                                    Next <ChevronRight className="w-3 h-3" />
+                                </button>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Product Visualization */}
-                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl border border-slate-700 shadow-sm p-5 overflow-hidden relative">
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent"></div>
-                        <div className="relative z-10 flex flex-col items-center">
-                            <div className="w-full h-36 bg-slate-700/50 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
-                                <div className="w-24 h-24 bg-gradient-to-br from-amber-700 to-amber-900 rounded-xl rotate-12 opacity-80"></div>
-                            </div>
-                            <button onClick={() => toast('3D product visualization coming soon!', 'info')} className="flex items-center gap-2 px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary rounded-lg text-xs font-bold transition-colors backdrop-blur-sm border border-primary/20">
-                                <Package className="w-3.5 h-3.5" />
-                                Product Visualization
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                    </>
+                )}
             </div>
 
             {/* ── Footer ── */}

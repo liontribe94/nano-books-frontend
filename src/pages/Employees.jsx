@@ -62,25 +62,21 @@ export default function Employees() {
                 const employeeId = 'emp_123'; // Demo ID
                 const [empData, financeData, payrollData] = await Promise.all([
                     api.employees.getOne(employeeId).catch(() => ({
-                        name: 'Marcus Richardson',
-                        role: 'Senior Software Engineer',
-                        dept: 'Engineering Department',
-                        email: 'm.richardson@cloudacc.com',
-                        location: 'Denver, CO',
-                        salary: '$142,500.00',
-                        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+                        name: 'Unknown Employee',
+                        role: 'Unknown Role',
+                        dept: 'Unknown Dept',
+                        email: '-',
+                        location: '-',
+                        salary: '$0.00',
+                        avatar: '',
                     })),
                     api.employees.getFinancialSnapshot(employeeId, 2024).catch(() => ({
-                        grossYTD: '$109,675.00',
-                        taxesYTD: '-$24,581.20',
-                        benefits: '-$9,412.50',
-                        netTakeHome: '$75,881.30',
+                        grossYTD: '$0.00',
+                        taxesYTD: '$0.00',
+                        benefits: '$0.00',
+                        netTakeHome: '$0.00',
                     })),
-                    api.employees.getPayrollHistory(employeeId).catch(() => [
-                        { period: 'Sep 16 – Sep 30, 2024', gross: '$5,937.50', deductions: '$1,721.88', net: '$4,215.62', status: 'Processed' },
-                        { period: 'Sep 01 – Sep 15, 2024', gross: '$5,937.50', deductions: '$1,721.88', net: '$4,215.62', status: 'Paid' },
-                        { period: 'Aug 16 – Aug 31, 2024', gross: '$5,937.50', deductions: '$1,721.88', net: '$4,215.62', status: 'Paid' },
-                    ])
+                    api.employees.getPayrollHistory(employeeId).catch(() => [])
                 ]);
 
                 setEmployee(empData);

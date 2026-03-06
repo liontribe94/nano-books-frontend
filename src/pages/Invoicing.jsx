@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../lib/api';
 import { useToast } from '../components/ui/Toast';
 import {
     Plus,
@@ -13,7 +14,13 @@ import {
     UserPlus,
     FileText,
     Settings2,
-    Printer
+    Printer,
+    X,
+    Loader2,
+    User,
+    Mail,
+    Phone,
+    MapPin
 } from 'lucide-react';
 
 /* ─── Stepper ─── */
@@ -43,6 +50,165 @@ const Stepper = ({ current }) => (
         ))}
     </div>
 );
+
+/* ─── Add Customer Modal ─── */
+const AddCustomerModal = ({ isOpen, onClose, onCustomerCreated, toast }) => {
+    const [saving, setSaving] = useState(false);
+    const [form, setForm] = useState({
+        name: '',
+        email: '',
+        phone: '',
+        billingAddress: '',
+        shippingAddress: ''
+    });
+
+    const update = (field, value) => setForm(p => ({ ...p, [field]: value }));
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!form.name || !form.email) {
+            toast('Name and Email are required', 'warning');
+            return;
+        }
+
+        setSaving(true);
+        try {
+            const res = await api.customers.create(form);
+            const created = res?.data || res;
+            toast('Customer created successfully!', 'success');
+            onCustomerCreated(created);
+            setForm({ name: '', email: '', phone: '', billingAddress: '', shippingAddress: '' });
+            onClose();
+        } catch (error) {
+            console.error('Failed to create customer:', error);
+            toast(error.message || 'Failed to create customer', 'error');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+
+            {/* Modal */}
+            <div className="relative w-full max-w-md mx-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl animate-in fade-in zoom-in-95">
+                {/* Header */}
+                <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                            <UserPlus className="w-4 h-4 text-primary" />
+                        </div>
+                        <h3 className="font-bold text-slate-800 dark:text-white">Add New Customer</h3>
+                    </div>
+                    <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+
+                {/* Form */}
+                <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                    {/* Name */}
+                    <div>
+                        <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">Customer Name *</label>
+                        <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                            <input
+                                type="text"
+                                value={form.name}
+                                onChange={(e) => update('name', e.target.value)}
+                                placeholder="e.g. John Doe"
+                                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                                autoFocus
+                            />
+                        </div>
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                        <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">Email Address *</label>
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                            <input
+                                type="email"
+                                value={form.email}
+                                onChange={(e) => update('email', e.target.value)}
+                                placeholder="e.g. john@company.com"
+                                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Phone */}
+                    <div>
+                        <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">Phone</label>
+                        <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                            <input
+                                type="tel"
+                                value={form.phone}
+                                onChange={(e) => update('phone', e.target.value)}
+                                placeholder="e.g. +1 555 123 4567"
+                                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Billing Address */}
+                    <div>
+                        <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">Billing Address</label>
+                        <div className="relative">
+                            <MapPin className="absolute left-3 top-3 text-slate-400 w-4 h-4" />
+                            <textarea
+                                value={form.billingAddress}
+                                onChange={(e) => update('billingAddress', e.target.value)}
+                                placeholder="Street address, city, state, zip"
+                                rows={2}
+                                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Shipping Address */}
+                    <div>
+                        <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5">Shipping Address</label>
+                        <div className="relative">
+                            <MapPin className="absolute left-3 top-3 text-slate-400 w-4 h-4" />
+                            <textarea
+                                value={form.shippingAddress}
+                                onChange={(e) => update('shippingAddress', e.target.value)}
+                                placeholder="Same as billing or different address"
+                                rows={2}
+                                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
+                            />
+                        </div>
+                    </div>
+                </form>
+
+                {/* Footer */}
+                <div className="flex items-center justify-end gap-3 p-5 border-t border-slate-200 dark:border-slate-800">
+                    <button onClick={onClose} className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={saving}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium shadow-sm shadow-primary/20 transition-all disabled:opacity-70"
+                    >
+                        {saving ? (
+                            <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                        ) : (
+                            <><UserPlus className="w-4 h-4" /> Add Customer</>
+                        )}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 /* ─── Line Item Row ─── */
 const LineItemRow = ({ item, onChange, onRemove }) => (
@@ -99,18 +265,59 @@ export default function Invoicing() {
     const navigate = useNavigate();
     const toast = useToast();
     const [step, setStep] = useState(0);
-    const [customer] = useState({
-        name: 'Alex Thompson',
-        company: 'Global Tech Solutions Inc.',
-        address: '401 Innovation Way, Suite 300, San Francisco, CA 94103',
+    const [showAddCustomer, setShowAddCustomer] = useState(false);
+    const [customers, setCustomers] = useState([]);
+    const [customerSearch, setCustomerSearch] = useState('');
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [customer, setCustomer] = useState({
+        id: '',
+        name: '',
+        company: '',
+        email: '',
+        address: '',
     });
 
     const [lineItems, setLineItems] = useState([
-        { id: 1, description: 'Cloud Infrastructure Maintenance', sub: 'Monthly managed service fee', qty: 1, rate: '$1,100.00', tax: 10, amount: 1320.00 },
-        { id: 2, description: '', sub: '', qty: 0, rate: '0.00', tax: 0, amount: 0.00 },
+        { id: Date.now(), description: '', sub: '', qty: 0, rate: '0.00', tax: 0, amount: 0.00 },
     ]);
 
     const [submitting, setSubmitting] = useState(false);
+
+    // Fetch customers on mount
+    useEffect(() => {
+        const fetchCustomers = async () => {
+            try {
+                const res = await api.customers.getAll();
+                const data = res?.data || res || [];
+                setCustomers(Array.isArray(data) ? data : []);
+            } catch (err) {
+                console.error('Failed to load customers:', err);
+            }
+        };
+        fetchCustomers();
+    }, []);
+
+    const filteredCustomers = customers.filter(c =>
+        (c.name || '').toLowerCase().includes(customerSearch.toLowerCase()) ||
+        (c.email || '').toLowerCase().includes(customerSearch.toLowerCase())
+    );
+
+    const selectCustomer = (c) => {
+        setCustomer({
+            id: c.id,
+            name: c.name || '',
+            company: c.company || c.email || '',
+            email: c.email || '',
+            address: c.billingAddress || c.billing_address || '',
+        });
+        setCustomerSearch(c.name || '');
+        setShowDropdown(false);
+    };
+
+    const handleCustomerCreated = (created) => {
+        setCustomers(prev => [created, ...prev]);
+        selectCustomer(created);
+    };
 
     const subtotal = lineItems.reduce((acc, item) => acc + (item.qty * parseFloat(item.rate.replace(/[^0-9.-]+/g, "")) || 0), 0);
     const taxAmount = subtotal * 0.1;
@@ -142,14 +349,22 @@ export default function Invoicing() {
         setSubmitting(true);
         try {
             const invoiceData = {
-                customerId: 'cust_default', // Placeholder for demo
-                customerName: customer.name,
-                items: lineItems.filter(item => item.description),
-                subtotal,
-                tax: taxAmount,
-                total,
-                status: 'Pending',
-                date: new Date().toISOString()
+                customerId: customer.id || 'cust_default',
+                invoiceNumber: `INV-${Date.now().toString().slice(-4)}`,
+                issueDate: new Date().toISOString(),
+                dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+                currency: 'USD',
+                items: lineItems
+                    .filter(item => item.description)
+                    .map(item => ({
+                        description: item.description,
+                        quantity: Number(item.qty),
+                        rate: typeof item.rate === 'string' ? parseFloat(item.rate.replace(/[^0-9.-]+/g, "")) : item.rate,
+                        taxPercentage: Number(item.tax)
+                    })),
+                discount: Number(lineItems.discount || 0),
+                notes: '',
+                status: 'draft'
             };
 
             await api.invoices.create(invoiceData);
@@ -165,6 +380,14 @@ export default function Invoicing() {
 
     return (
         <div className="flex flex-col gap-6 pb-12">
+            {/* ── Add Customer Modal ── */}
+            <AddCustomerModal
+                isOpen={showAddCustomer}
+                onClose={() => setShowAddCustomer(false)}
+                onCustomerCreated={handleCustomerCreated}
+                toast={toast}
+            />
+
             {/* ── Header ── */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-3">
@@ -209,23 +432,54 @@ export default function Invoicing() {
                             <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
                                 <span className="text-primary">👤</span> Customer Details
                             </h3>
-                            <button onClick={() => toast('New customer form coming soon', 'info')} className="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+                            <button onClick={() => setShowAddCustomer(true)} className="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
                                 <UserPlus className="w-3.5 h-3.5" />
                                 Add New Customer
                             </button>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-                            <div>
+                            <div className="relative">
                                 <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">Search Customer</label>
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                                     <input
                                         type="text"
+                                        value={customerSearch}
+                                        onChange={(e) => {
+                                            setCustomerSearch(e.target.value);
+                                            setShowDropdown(true);
+                                        }}
+                                        onFocus={() => setShowDropdown(true)}
                                         placeholder="Start typing customer name..."
                                         className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                                     />
                                 </div>
+                                {/* Customer Dropdown */}
+                                {showDropdown && customerSearch && (
+                                    <div className="absolute z-20 left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                        {filteredCustomers.length > 0 ? filteredCustomers.map(c => (
+                                            <button
+                                                key={c.id}
+                                                onClick={() => selectCustomer(c)}
+                                                className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 last:border-0"
+                                            >
+                                                <div className="w-7 h-7 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold text-[10px] shrink-0">
+                                                    {(c.name || '?').substring(0, 2).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{c.name}</p>
+                                                    <p className="text-[11px] text-slate-400">{c.email}</p>
+                                                </div>
+                                            </button>
+                                        )) : (
+                                            <div className="px-4 py-3 text-sm text-slate-400 text-center">
+                                                No customers found.{' '}
+                                                <button onClick={() => { setShowDropdown(false); setShowAddCustomer(true); }} className="text-primary hover:underline font-medium">Create one</button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">Currency</label>
@@ -238,16 +492,22 @@ export default function Invoicing() {
                         </div>
 
                         {/* Selected Customer */}
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 flex items-start gap-4 border border-slate-100 dark:border-slate-700">
-                            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold text-sm shrink-0">
-                                AT
+                        {customer.name ? (
+                            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 flex items-start gap-4 border border-slate-100 dark:border-slate-700">
+                                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                                    {customer.name.substring(0, 2).toUpperCase()}
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-slate-800 dark:text-slate-200">{customer.name}</p>
+                                    <p className="text-xs text-slate-500">{customer.email || customer.company}</p>
+                                    {customer.address && <p className="text-xs text-slate-400 mt-1">{customer.address}</p>}
+                                </div>
                             </div>
-                            <div>
-                                <p className="font-semibold text-slate-800 dark:text-slate-200">{customer.name}</p>
-                                <p className="text-xs text-slate-500">{customer.company}</p>
-                                <p className="text-xs text-slate-400 mt-1">{customer.address}</p>
+                        ) : (
+                            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 flex items-center justify-center border border-dashed border-slate-200 dark:border-slate-700">
+                                <p className="text-sm text-slate-400">Search for a customer above or <button onClick={() => setShowAddCustomer(true)} className="text-primary hover:underline font-medium">add a new one</button></p>
                             </div>
-                        </div>
+                        )}
                     </div>
 
                     {/* Service & Product Items */}
@@ -327,11 +587,32 @@ export default function Invoicing() {
                             Previous
                         </button>
                         <button
-                            onClick={() => setStep(Math.min(step + 1, steps.length - 1))}
-                            className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold shadow-md shadow-primary/20 transition-all"
+                            onClick={() => {
+                                if (step === steps.length - 1) {
+                                    handleSendInvoice();
+                                } else {
+                                    setStep(step + 1);
+                                }
+                            }}
+                            disabled={submitting}
+                            className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold shadow-md shadow-primary/20 transition-all disabled:opacity-70"
                         >
-                            Next: Finalize Details
-                            <ChevronRight className="w-4 h-4" />
+                            {submitting ? (
+                                <>
+                                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Finalizing...
+                                </>
+                            ) : step === steps.length - 1 ? (
+                                <>
+                                    Finalize & Send Invoice
+                                    <Send className="w-4 h-4" />
+                                </>
+                            ) : (
+                                <>
+                                    Next: {steps[step + 1]}
+                                    <ChevronRight className="w-4 h-4" />
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui/Toast';
+import { api } from '../lib/api';
 import {
     Plus,
     Search,
@@ -10,7 +11,8 @@ import {
     Download,
     CheckCircle2,
     Clock,
-    AlertCircle
+    AlertCircle,
+    Loader2
 } from 'lucide-react';
 
 const InvoiceRow = ({ id, client, amount, date, status, onAction }) => {
@@ -18,13 +20,15 @@ const InvoiceRow = ({ id, client, amount, date, status, onAction }) => {
         Paid: "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600",
         Pending: "bg-amber-50 dark:bg-amber-500/10 text-amber-600",
         Overdue: "bg-rose-50 dark:bg-rose-500/10 text-rose-600",
+        draft: "bg-slate-50 dark:bg-slate-500/10 text-slate-600"
     };
 
     const StatusIcon = {
         Paid: CheckCircle2,
         Pending: Clock,
         Overdue: AlertCircle,
-    }[status];
+        draft: FileText
+    }[status] || Clock; // Fallback to Clock if not one of these
 
     return (
         <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors border-b border-slate-100 dark:border-slate-800 last:border-0">
@@ -44,7 +48,7 @@ const InvoiceRow = ({ id, client, amount, date, status, onAction }) => {
                 {amount}
             </td>
             <td className="px-6 py-4 text-center">
-                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase ${statusStyles[status]}`}>
+                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase ${statusStyles[status] || statusStyles.draft}`}>
                     <StatusIcon className="w-3.5 h-3.5" />
                     {status}
                 </div>
@@ -61,14 +65,44 @@ const InvoiceRow = ({ id, client, amount, date, status, onAction }) => {
 export default function Sales() {
     const navigate = useNavigate();
     const toast = useToast();
+    const [invoices, setInvoices] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    const invoices = [
-        { id: 'INV-001', client: 'Acme Corp', amount: '$1,200.00', date: 'Oct 24, 2023', status: 'Paid' },
-        { id: 'INV-002', client: 'Globex Inc', amount: '$850.00', date: 'Oct 22, 2023', status: 'Pending' },
-        { id: 'INV-003', client: 'Soylent Corp', amount: '$2,340.00', date: 'Oct 20, 2023', status: 'Overdue' },
-        { id: 'INV-004', client: 'Initech', amount: '$4,500.00', date: 'Oct 18, 2023', status: 'Paid' },
-        { id: 'INV-005', client: 'Umbrella Corp', amount: '$9,000.00', date: 'Oct 15, 2023', status: 'Pending' },
-    ];
+    useEffect(() => {
+        const fetchInvoices = async () => {
+            try {
+                const data = await api.invoices.getAll();
+                // Map the backend data to match the UI component's expected structure
+                const formattedInvoices = Array.isArray(data.items || data) ? (data.items || data).map(inv => ({
+                    id: inv.invoiceNumber || inv.id,
+                    client: inv.customer?.name || inv.customerId || 'Unknown Client',
+                    amount: `$${(inv.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+                    date: new Date(inv.issueDate || inv.createdAt).toLocaleDateString(),
+                    status: inv.status === 'draft' ? 'draft' : // Mapping statuses to component expectations if needed
+                        inv.status === 'paid' ? 'Paid' :
+                            inv.status === 'sent' ? 'Pending' :
+                                inv.status === 'overdue' ? 'Overdue' : 'Pending'
+                })) : [];
+                setInvoices(formattedInvoices);
+            } catch (error) {
+                console.error("Failed to load invoices", error);
+                toast('Failed to load invoices.', 'error');
+                setInvoices([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchInvoices();
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="flex h-96 items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-8">

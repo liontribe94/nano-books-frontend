@@ -10,6 +10,7 @@ import Invoicing from './pages/Invoicing';
 import Payroll from './pages/Payroll';
 import Inventory from './pages/Inventory';
 import AddProduct from './pages/AddProduct';
+import ProductDetail from './pages/ProductDetail';
 import Expenses from './pages/Expenses';
 import LandingPage from './pages/LandingPage';
 import Pricing from './pages/Pricing';
@@ -46,6 +47,7 @@ function App() {
               <Route path="payroll" element={<Payroll />} />
               <Route path="inventory" element={<Inventory />} />
               <Route path="inventory/new" element={<AddProduct />} />
+              <Route path="inventory/:id" element={<ProductDetail />} />
               <Route path="expenses" element={<Expenses />} />
               <Route path="expenses/new" element={<AddExpense />} />
               <Route path="banking" element={<Banking />} />

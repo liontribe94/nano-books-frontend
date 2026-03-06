@@ -117,11 +117,11 @@ export default function Payroll() {
             setLoading(true);
             try {
                 const [cycleData, stats, empList] = await Promise.all([
-                    api.payroll.getCurrentCycle().catch(() => ({ period: 'October 2023' })),
+                    api.payroll.getCurrentCycle().catch(() => ({ period: 'Unknown Period' })),
                     api.payroll.getStats().catch(() => ({
-                        totalCost: 42850.00,
-                        netPay: 31420.50,
-                        taxLiabilities: 11429.50
+                        totalCost: 0,
+                        netPay: 0,
+                        taxLiabilities: 0
                     })),
                     api.employees.getAll({ limit: 50 }).catch(() => [])
                 ]);
@@ -130,7 +130,7 @@ export default function Payroll() {
                 setPayrollStats(stats);
 
                 // Map employees to payroll row format
-                // If API returns payroll-specific fields, use them. Otherwise mock for demo.
+                // If API returns payroll-specific fields, use them.
                 const mappedEmployees = Array.isArray(empList) && empList.length > 0 ? empList.map(e => ({
                     initials: e.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
                     name: e.name,
@@ -138,14 +138,9 @@ export default function Payroll() {
                     regHours: 160, // Mocked for now as this would come from time-tracking integration
                     overtime: 0,
                     expenses: 0,
-                    grossPay: e.salary ? `$${(parseInt(e.salary.replace(/[^0-9]/g, '')) / 12).toLocaleString()}` : '$5,000.00',
+                    grossPay: e.salary ? `$${(parseInt(e.salary.replace(/[^0-9]/g, '')) / 12).toLocaleString()}` : '$0.00',
                     highlight: false
-                })) : [
-                    { initials: 'JD', name: 'Jane Doe', role: 'Product Designer', regHours: 160, overtime: 5, expenses: 0, grossPay: '$6,950.00', highlight: false },
-                    { initials: 'MS', name: 'Michael Smith', role: 'Sr. Backend Engineer', regHours: 160, overtime: 0, expenses: 190, grossPay: '$8,000.00', highlight: false },
-                    { initials: 'SR', name: 'Sarah Rodriguez', role: 'Marketing Lead', regHours: 152, overtime: 0, expenses: 0, grossPay: '$5,700.00', highlight: true },
-                    { initials: 'TB', name: 'Tom Baker', role: 'DevOps Engineer', regHours: 160, overtime: 12, expenses: 150, grossPay: '$4,250.00', highlight: false },
-                ];
+                })) : [];
                 setEmployees(mappedEmployees);
 
             } catch (error) {

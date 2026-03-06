@@ -99,12 +99,7 @@ export default function Dashboard() {
                 const [stats, txs, cashFlow, expenses] = await Promise.all([
                     api.dashboard.getStats(timeRange).catch(err => {
                         console.error('Failed to fetch stats', err);
-                        // Fallback data for demo purposes if backend fails
-                        return {
-                            revenue: { value: 45280, change: 12.5 },
-                            expenses: { value: 12450, change: 4.2 },
-                            profit: { value: 32830, change: 'Healthy' }
-                        };
+                        return { revenue: null, expenses: null, profit: null };
                     }),
                     api.dashboard.getTransactions().catch(err => {
                         console.error('Failed to fetch transactions', err);
@@ -112,28 +107,11 @@ export default function Dashboard() {
                     }),
                     api.dashboard.getCashFlow(timeRange).catch(err => {
                         console.error('Failed to fetch cash flow', err);
-                        // Fallback cash flow
-                        return [
-                            { day: 'Mon', income: 40, outcome: 20 },
-                            { day: 'Tue', income: 60, outcome: 30 },
-                            { day: 'Wed', income: 50, outcome: 35 },
-                            { day: 'Thu', income: 70, outcome: 40 },
-                            { day: 'Fri', income: 45, outcome: 20 },
-                            { day: 'Sat', income: 30, outcome: 15 },
-                            { day: 'Sun', income: 55, outcome: 25 },
-                        ];
+                        return [];
                     }),
                     api.dashboard.getExpenses(timeRange).catch(err => {
                         console.error('Failed to fetch expenses', err);
-                        // Fallback expenses
-                        return {
-                            total: 12450,
-                            categories: [
-                                { name: 'Marketing', value: 45, color: 'bg-primary' },
-                                { name: 'Software', value: 30, color: 'bg-blue-300' },
-                                { name: 'Other', value: 25, color: 'bg-slate-200' }
-                            ]
-                        };
+                        return { total: 0, categories: [] };
                     })
                 ]);
 
@@ -142,7 +120,7 @@ export default function Dashboard() {
                     {
                         title: 'Total Revenue',
                         value: `$${stats.revenue?.value?.toLocaleString() || '0.00'}`,
-                        change: `${stats.revenue?.change > 0 ? '+' : ''}${stats.revenue?.change}%`,
+                        change: `${stats.revenue?.change > 0 ? '+' : ''}${stats.revenue?.change || 0}%`,
                         trend: stats.revenue?.change >= 0 ? 'up' : 'down',
                         icon: TrendingUp,
                         colorClass: 'text-emerald-600',
@@ -151,7 +129,7 @@ export default function Dashboard() {
                     {
                         title: 'Total Expenses',
                         value: `$${stats.expenses?.value?.toLocaleString() || '0.00'}`,
-                        change: `${stats.expenses?.change > 0 ? '+' : ''}${stats.expenses?.change}%`,
+                        change: `${stats.expenses?.change > 0 ? '+' : ''}${stats.expenses?.change || 0}%`,
                         trend: stats.expenses?.change <= 0 ? 'up' : 'down', // expenses down is good, but typically red implies "expense" category color
                         icon: Banknote,
                         colorClass: 'text-rose-600',
@@ -160,7 +138,7 @@ export default function Dashboard() {
                     {
                         title: 'Net Profit',
                         value: `$${stats.profit?.value?.toLocaleString() || '0.00'}`,
-                        change: stats.profit?.change || 'Healthy',
+                        change: stats.profit?.change ? `${stats.profit.change}%` : 'N/A',
                         trend: 'up',
                         icon: Wallet,
                         colorClass: 'text-primary',
@@ -177,9 +155,9 @@ export default function Dashboard() {
                     category: { label: tx.category || 'General', bg: 'bg-slate-100', text: 'text-slate-600' }, // Simplified mapping
                     amount: `${tx.amount >= 0 ? '+' : '-'}$${Math.abs(tx.amount).toLocaleString()}`,
                     status: tx.status || 'Pending'
-                })) : getFallbackTransactions(); // Use fallback if empty/error and we want to show something
+                })) : [];
 
-                setTransactions(mappedTxs.length > 0 ? mappedTxs : getFallbackTransactions());
+                setTransactions(mappedTxs);
 
                 // Prepare Cash Flow Data
                 const formattedCashFlow = Array.isArray(cashFlow) ? cashFlow.map(item => ({
@@ -191,32 +169,20 @@ export default function Dashboard() {
 
                 // Prepare Expense Data
                 setExpenseData({
-                    total: `$${(expenses.total / 1000).toFixed(1)}k`,
-                    categories: expenses.categories || []
+                    total: `$${((expenses?.total || 0) / 1000).toFixed(1)}k`,
+                    categories: expenses?.categories || []
                 });
 
             } catch (error) {
                 console.error("Dashboard load error:", error);
-                toast('Failed to load dashboard data. Showing demo data.', 'error');
-                // Use fallback data
-                setKpiData(getFallbackKpi());
-                setTransactions(getFallbackTransactions());
-                setCashFlowData([
-                    { day: 'Mon', h: 'h-32', h2: 'h-20' },
-                    { day: 'Tue', h: 'h-48', h2: 'h-24' },
-                    { day: 'Wed', h: 'h-40', h2: 'h-28' },
-                    { day: 'Thu', h: 'h-56', h2: 'h-32' },
-                    { day: 'Fri', h: 'h-36', h2: 'h-16' },
-                    { day: 'Sat', h: 'h-24', h2: 'h-12' },
-                    { day: 'Sun', h: 'h-44', h2: 'h-20' },
-                ]);
+                toast('Failed to load dashboard data.', 'error');
+                // Use fallback empty data
+                setKpiData([]);
+                setTransactions([]);
+                setCashFlowData([]);
                 setExpenseData({
-                    total: '$12.4k',
-                    categories: [
-                        { name: 'Marketing', value: 45, color: 'bg-primary' },
-                        { name: 'Software', value: 30, color: 'bg-blue-300' },
-                        { name: 'Other', value: 25, color: 'bg-slate-200' }
-                    ]
+                    total: '$0.00',
+                    categories: []
                 });
             } finally {
                 setLoading(false);
@@ -225,20 +191,6 @@ export default function Dashboard() {
 
         fetchDashboardData();
     }, [timeRange]);
-
-    // Fallback data generators to keep UI functional without backend
-    const getFallbackKpi = () => [
-        { title: 'Total Revenue', value: '$45,280.00', change: '+12.5%', trend: 'up', icon: TrendingUp, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50 dark:bg-emerald-500/10' },
-        { title: 'Total Expenses', value: '$12,450.00', change: '+4.2%', trend: 'down', icon: Banknote, colorClass: 'text-rose-600', bgClass: 'bg-rose-50 dark:bg-rose-500/10' },
-        { title: 'Net Profit', value: '$32,830.00', change: 'Healthy', trend: 'up', icon: Wallet, colorClass: 'text-primary', bgClass: 'bg-primary/10' }
-    ];
-
-    const getFallbackTransactions = () => [
-        { icon: Cloud, name: 'Amazon Web Services', subtext: 'AWS-MONTHLY-7729', date: 'Oct 24, 2023', category: { label: 'Software', bg: 'bg-indigo-50 dark:bg-indigo-500/10', text: 'text-indigo-600' }, amount: '-$1,240.00', status: 'Cleared' },
-        { icon: Store, name: 'Starbucks Coffee', subtext: 'Team Meeting', date: 'Oct 23, 2023', category: { label: 'Meals', bg: 'bg-orange-50 dark:bg-orange-500/10', text: 'text-orange-600' }, amount: '-$42.15', status: 'Pending' },
-        { icon: CreditCard, name: 'Client Payment: Acme Corp', subtext: 'INV-2023-089', date: 'Oct 22, 2023', category: { label: 'Service', bg: 'bg-primary/10', text: 'text-primary' }, amount: '+$8,500.00', status: 'Cleared' },
-        { icon: Megaphone, name: 'Facebook Ads', subtext: 'Marketing Campaign Q4', date: 'Oct 21, 2023', category: { label: 'Marketing', bg: 'bg-pink-50 dark:bg-pink-500/10', text: 'text-pink-600' }, amount: '-$2,500.00', status: 'Cleared' }
-    ];
 
     if (loading) {
         return (

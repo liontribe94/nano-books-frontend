@@ -73,16 +73,13 @@ export default function Expenses() {
     const fetchExpenses = async () => {
         setLoading(true);
         try {
-            const data = await api.expenses.getAll();
-            setExpenses(data);
+            const response = await api.expenses.getAll();
+            setExpenses(response.data || response || []);
         } catch (error) {
             console.error('Failed to fetch expenses:', error);
             toast('Failed to load expenses', 'error');
-            // Fallback for demo if API fails
-            setExpenses([
-                { id: 'EXP-001', merchant: 'AWS Services', amount: 1240.00, date: '2023-10-24', category: 'Software', status: 'Approved' },
-                { id: 'EXP-002', merchant: 'Starbucks', amount: 42.15, date: '2023-10-23', category: 'Meals', status: 'Pending' },
-            ]);
+            // Reset to empty state on error instead of throwing demo data
+            setExpenses([]);
         } finally {
             setLoading(false);
         }
