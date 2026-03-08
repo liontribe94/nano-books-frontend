@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../lib/api';
 import { useToast } from '../components/ui/Toast';
 import {
     Calendar,
@@ -13,7 +14,8 @@ import {
     Percent,
     Receipt,
     Briefcase,
-    CircleDollarSign
+    CircleDollarSign,
+    Loader2
 } from 'lucide-react';
 
 /* ─── Stat Card ─── */

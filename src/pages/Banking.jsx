@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../lib/api';
 import { useToast } from '../components/ui/Toast';
 import {
     Search,
@@ -13,7 +14,8 @@ import {
     ArrowRight,
     Cpu,
     Lock,
-    FileCheck
+    FileCheck,
+    Loader2
 } from 'lucide-react';
 
 /* ─── stat cards ─── */
