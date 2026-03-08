@@ -73,12 +73,23 @@ export default function Expenses() {
     const fetchExpenses = async () => {
         setLoading(true);
         try {
-            const response = await api.expenses.getAll();
-            setExpenses(response.data || response || []);
+            const res = await api.expenses.getAll();
+            const data = res?.data || res || [];
+
+            // Map with snake_case fallback
+            const formattedExpenses = data.map(exp => ({
+                id: exp.id,
+                merchant: exp.merchant || exp.vendor || 'Unknown',
+                category: exp.category || 'Other',
+                amount: exp.amount || exp.total_amount || 0,
+                date: exp.date || exp.created_at || new Date(),
+                status: exp.status || 'Pending'
+            }));
+
+            setExpenses(formattedExpenses);
         } catch (error) {
             console.error('Failed to fetch expenses:', error);
             toast('Failed to load expenses', 'error');
-            // Reset to empty state on error instead of throwing demo data
             setExpenses([]);
         } finally {
             setLoading(false);
@@ -99,6 +110,18 @@ export default function Expenses() {
             toast('Failed to delete expense', 'error');
         }
     };
+
+    // Calculate category breakdown
+    const categoryTotals = expenses.reduce((acc, exp) => {
+        const cat = exp.category || 'Other';
+        acc[cat] = (acc[cat] || 0) + Number(exp.amount);
+        return acc;
+    }, {});
+
+    const totalSpent = Object.values(categoryTotals).reduce((a, b) => a + b, 0);
+    const topCategories = Object.entries(categoryTotals)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3);
 
     return (
         <div className="flex flex-col gap-8">
@@ -125,27 +148,31 @@ export default function Expenses() {
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-center items-center">
                     <h4 className="w-full font-bold text-slate-800 dark:text-white mb-4 text-left">Category Breakdown</h4>
                     <div className="w-40 h-40 rounded-full border-[16px] border-slate-100 dark:border-slate-800 relative flex items-center justify-center">
-                        <div className="absolute inset-0 rounded-full border-[16px] border-primary border-t-transparent border-l-transparent -rotate-45"></div>
+                        <div
+                            className="absolute inset-0 rounded-full border-[16px] border-primary border-t-transparent border-l-transparent -rotate-45"
+                            style={{
+                                borderColor: totalSpent > 0 ? undefined : 'transparent',
+                                borderTopColor: 'transparent',
+                                borderLeftColor: 'transparent'
+                            }}
+                        ></div>
                         <div className="text-center">
                             <p className="text-xs text-slate-400 uppercase font-bold">Total</p>
-                            <p className="text-xl font-bold">${expenses.reduce((acc, curr) => acc + parseFloat(curr.amount), 0).toLocaleString()}</p>
+                            <p className="text-xl font-bold">${totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                         </div>
                     </div>
                     <div className="mt-6 w-full space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-primary"></span>
-                                <span className="text-slate-600 dark:text-slate-400">Software</span>
+                        {topCategories.length > 0 ? topCategories.map(([cat, amount], idx) => (
+                            <div key={cat} className="flex items-center justify-between text-sm">
+                                <div className="flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${idx === 0 ? 'bg-primary' : idx === 1 ? 'bg-blue-400' : 'bg-indigo-300'}`}></span>
+                                    <span className="text-slate-600 dark:text-slate-400">{cat}</span>
+                                </div>
+                                <span className="font-semibold">{totalSpent > 0 ? Math.round((amount / totalSpent) * 100) : 0}%</span>
                             </div>
-                            <span className="font-semibold">45%</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-blue-300"></span>
-                                <span className="text-slate-600 dark:text-slate-400">Services</span>
-                            </div>
-                            <span className="font-semibold">30%</span>
-                        </div>
+                        )) : (
+                            <p className="text-xs text-slate-400 text-center italic">No data available</p>
+                        )}
                     </div>
                 </div>
 

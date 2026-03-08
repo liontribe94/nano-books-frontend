@@ -145,64 +145,73 @@ const FeatureCard = ({ icon: Icon, title, description }) => (
 export default function Banking() {
     const toast = useToast();
     const [tab, setTab] = useState('unreconciled');
+    const [loading, setLoading] = useState(true);
+    const [transactions, setTransactions] = useState([]);
+    const [balances, setBalances] = useState({
+        statement: 42850.32, // Keeping as mock since real bank feed isn't connected
+        inBooks: 0,
+        difference: 0
+    });
 
-    const transactions = [
-        {
-            date: 'OCT 24',
-            bankName: 'Starbucks Coffee #2241',
-            bankSub: 'VISA **** • 4087',
-            bankAmount: '$12.50',
-            status: 'exact',
-            actions: [{ label: 'Match', variant: 'green' }],
-            ledgerName: 'Expense: Starbucks',
-            ledgerSub: 'Posted by · Sync on Oct 24',
-            ledgerAmount: '$12.50',
-        },
-        {
-            date: 'OCT 24',
-            bankName: 'Adobe Creative Cloud Subscription',
-            bankSub: 'VISA **** • 4087',
-            bankAmount: '$52.99',
-            status: 'training',
-            actions: [{ label: 'View', variant: 'orange' }, { label: 'Exclude', variant: 'outline' }],
-            ledgerName: null,
-            ledgerSub: null,
-            ledgerAmount: null,
-        },
-        {
-            date: 'OCT 22',
-            bankName: 'Deposit: Stripe Transfer #77291',
-            bankSub: 'ACH Receiving',
-            bankAmount: '+$1,500.00',
-            status: 'exact',
-            actions: [{ label: 'Match', variant: 'green' }],
-            ledgerName: 'Invoice Payment: #INV-2023-004',
-            ledgerSub: 'Acme Corp · Oct 20, 2023',
-            ledgerAmount: '$1,500.00',
-        },
-        {
-            date: 'OCT 21',
-            bankName: 'Amazon.com Marketplace',
-            bankSub: 'VISA **** • 4087',
-            bankAmount: '$84.22',
-            status: 'none',
-            actions: [{ label: 'Add Transaction', variant: 'primary' }],
-            ledgerName: "We couldn't find a record of this in your books.",
-            ledgerSub: null,
-            ledgerAmount: null,
-        },
-        {
-            date: 'OCT 20',
-            bankName: 'Apple Store - MacBook Pro 14',
-            bankSub: 'VISA **** • 4087',
-            bankAmount: '$2,118.94',
-            status: 'suggest',
-            actions: [{ label: 'Match', variant: 'green' }],
-            ledgerName: 'Fixed Asset: Office Equipment',
-            ledgerSub: 'Manual · Approved',
-            ledgerAmount: '$2,118.94',
-        },
-    ];
+    const fetchBankingData = async () => {
+        setLoading(true);
+        try {
+            const res = await api.dashboard.getTransactions();
+            const data = res?.data || res || [];
+
+            // Map with snake_case fallback
+            const formatted = data.map(tx => {
+                const amount = tx.amount || tx.total_amount || 0;
+                const isDeposit = amount > 0;
+
+                return {
+                    date: tx.date || tx.created_at || new Date().toISOString(),
+                    bankName: tx.merchant || tx.vendor || tx.description || 'Unknown Transaction',
+                    bankSub: tx.type || 'General',
+                    bankAmount: `${isDeposit ? '+' : ''}$${Math.abs(amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+                    status: tx.status === 'reconciled' ? 'exact' : 'none',
+                    actions: tx.status === 'reconciled' ? [{ label: 'View', variant: 'outline' }] : [{ label: 'Match', variant: 'green' }],
+                    ledgerName: tx.status === 'reconciled' ? tx.description : null,
+                    ledgerSub: tx.status === 'reconciled' ? 'Matched manually' : null,
+                    ledgerAmount: tx.status === 'reconciled' ? `$${Math.abs(amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : null,
+                };
+            });
+
+            setTransactions(formatted);
+
+            // Calculate balances
+            const totalInBooks = data.reduce((acc, tx) => acc + (tx.amount || tx.total_amount || 0), 0);
+            setBalances(prev => ({
+                ...prev,
+                inBooks: totalInBooks,
+                difference: Math.abs(prev.statement - totalInBooks)
+            }));
+
+        } catch (error) {
+            console.error('Failed to fetch banking data:', error);
+            toast('Failed to load transactions', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchBankingData();
+    }, []);
+
+    const filteredTransactions = tab === 'unreconciled'
+        ? transactions.filter(tx => tx.status !== 'exact')
+        : transactions;
+
+    if (loading) {
+        return (
+            <div className="flex h-96 items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+
+    const progress = Math.min(100, Math.round((transactions.filter(tx => tx.status === 'exact').length / (transactions.length || 1)) * 100));
 
     return (
         <div className="flex flex-col gap-8 pb-12">
@@ -211,7 +220,7 @@ export default function Banking() {
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Bank Reconciliation</h1>
                     <div className="flex items-center gap-2 mt-1">
-                        <span className="text-sm text-slate-500 dark:text-slate-400">Business Checking Account (...4482)</span>
+                        <span className="text-sm text-slate-500 dark:text-slate-400">Connected Account</span>
                         <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 text-[10px] font-bold uppercase">Connected</span>
                     </div>
                 </div>
@@ -229,14 +238,14 @@ export default function Banking() {
 
             {/* ── Stat Cards ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <StatCard label="Statement Balance" value="$42,850.32" sub="Updated 7 hours ago" />
-                <StatCard label="In-Book's Balance" value="$41,210.12" sub="Pending reconciliation" />
-                <StatCard label="Difference" value="$1,640.20" sub="4 transactions remaining" variant="danger" />
+                <StatCard label="Statement Balance" value={`$${balances.statement.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} sub="Verified Bank Feed" />
+                <StatCard label="In-Book's Balance" value={`$${balances.inBooks.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} sub="Current Ledger Total" />
+                <StatCard label="Difference" value={`$${balances.difference.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} sub={`${transactions.filter(tx => tx.status !== 'exact').length} transactions remaining`} variant={balances.difference === 0 ? 'success' : 'danger'} />
                 <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-2">
                     <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Progress</span>
-                    <span className="text-2xl font-bold text-emerald-600">78%</span>
+                    <span className="text-2xl font-bold text-emerald-600">{progress}%</span>
                     <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-1">
-                        <div className="h-full bg-primary rounded-full transition-all" style={{ width: '78%' }}></div>
+                        <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progress}%` }}></div>
                     </div>
                 </div>
             </div>
@@ -264,13 +273,6 @@ export default function Banking() {
                     >
                         All Transactions
                     </button>
-                    <div className="hidden sm:block w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
-                    <button onClick={() => toast('Filter options coming soon', 'info')} className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                        <Filter className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => toast('Reconciliation data exported', 'success')} className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                        <Download className="w-4 h-4" />
-                    </button>
                 </div>
             </div>
 
@@ -287,19 +289,23 @@ export default function Banking() {
                             </tr>
                         </thead>
                         <tbody>
-                            {transactions.map((tx, i) => (
+                            {filteredTransactions.length > 0 ? filteredTransactions.map((tx, i) => (
                                 <ReconcileRow key={i} {...tx} onAction={(label, name) => toast(`${label}: ${name}`, 'success')} />
-                            ))}
+                            )) : (
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-10 text-center text-slate-500 italic">No transactions found</td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
 
                 {/* Footer */}
                 <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm text-slate-500">
-                    <span>Showing 5 of 14 unreconciled transactions</span>
+                    <span>Showing {filteredTransactions.length} of {transactions.length} transactions</span>
                     <div className="flex gap-2">
                         <button className="px-3 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50" disabled>Previous</button>
-                        <button onClick={() => toast('Loading next page...', 'info')} className="px-3 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800">Next</button>
+                        <button className="px-3 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50" disabled>Next</button>
                     </div>
                 </div>
             </div>

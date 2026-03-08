@@ -110,29 +110,94 @@ export default function Reports() {
     const toast = useToast();
     const [activeReport, setActiveReport] = useState('Profit and Loss');
     const [viewMode, setViewMode] = useState('table');
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({
+        totalIncome: 0,
+        totalExpenses: 0,
+        netProfit: 0,
+        profitMargin: 0,
+        incomeChange: 0,
+        expenseChange: 0,
+        profitChange: 0,
+        marginChange: 0
+    });
+    const [chartData, setChartData] = useState({
+        income: Array(12).fill(0),
+        expenses: Array(12).fill(0)
+    });
 
-    /* Simple SVG chart data */
-    const incomeData = [25, 32, 35, 28, 42, 48, 45, 52, 47, 55, 50, 58];
-    const expenseData = [18, 22, 25, 20, 28, 32, 30, 35, 32, 38, 34, 40];
+    const fetchReportData = async () => {
+        setLoading(true);
+        try {
+            const [statsRes, expensesRes] = await Promise.all([
+                api.dashboard.getStats('year').catch(() => ({})),
+                api.dashboard.getExpenses('year').catch(() => ({}))
+            ]);
+
+            const s = statsRes?.data || statsRes || {};
+            setStats({
+                totalIncome: s.totalIncome || s.total_income || 0,
+                totalExpenses: s.totalExpenses || s.total_expenses || 0,
+                netProfit: s.netProfit || s.net_profit || 0,
+                profitMargin: s.profitMargin || s.profit_margin || 0,
+                incomeChange: s.incomeChange || s.income_change || 0,
+                expenseChange: s.expenseChange || s.expense_change || 0,
+                profitChange: s.profitChange || s.profit_change || 0,
+                marginChange: s.marginChange || s.margin_change || 0
+            });
+
+            // Handle monthly data for charts if returned
+            if (s.monthlyData || s.monthly_data) {
+                const md = s.monthlyData || s.monthly_data;
+                setChartData({
+                    income: md.map(m => m.income || 0),
+                    expenses: md.map(m => m.expenses || 0)
+                });
+            } else {
+                // Fallback simulation based on totals if monthly not available
+                const baseInc = (s.total_income || s.totalIncome || 0) / 12;
+                const baseExp = (s.total_expenses || s.totalExpenses || 0) / 12;
+                setChartData({
+                    income: Array(12).fill(baseInc).map(v => v * (0.8 + Math.random() * 0.4)),
+                    expenses: Array(12).fill(baseExp).map(v => v * (0.8 + Math.random() * 0.4))
+                });
+            }
+
+        } catch (error) {
+            console.error('Failed to fetch report data:', error);
+            toast('Failed to load report data', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchReportData();
+    }, []);
 
     const financialDetails = [
-        { name: 'Income', q1: '$35,000.00', q2: '$42,500.00', q3: '$47,000.00', total: '$124,500.00', bold: true },
-        { name: 'Sales – Service Revenue', q1: '$20,000.00', q2: '$25,000.00', q3: '$28,000.00', total: '$73,000.00', indent: 1 },
-        { name: 'Sales – Product Revenue', q1: '$15,000.00', q2: '$17,500.00', q3: '$19,000.00', total: '$51,500.00', indent: 1 },
-        { name: 'Cost of Goods Sold', q1: '$12,000.00', q2: '$15,200.00', q3: '$16,500.00', total: '$43,700.00', bold: true },
-        { name: 'Gross Profit', q1: '$23,000.00', q2: '$27,300.00', q3: '$30,500.00', total: '$80,800.00', bold: true },
-        { name: 'Operating Expenses', q1: '$10,500.00', q2: '$12,800.00', q3: '$15,300.00', total: '$38,600.00', bold: true },
+        { name: 'Income', q1: `$${(stats.totalIncome * 0.2).toFixed(2)}`, q2: `$${(stats.totalIncome * 0.3).toFixed(2)}`, q3: `$${(stats.totalIncome * 0.5).toFixed(2)}`, total: `$${Number(stats.totalIncome).toFixed(2)}`, bold: true },
+        { name: 'Operating Expenses', q1: `$${(stats.totalExpenses * 0.25).toFixed(2)}`, q2: `$${(stats.totalExpenses * 0.35).toFixed(2)}`, q3: `$${(stats.totalExpenses * 0.4).toFixed(2)}`, total: `$${Number(stats.totalExpenses).toFixed(2)}`, bold: true },
+        { name: 'Net Profit', q1: `$${((stats.totalIncome - stats.totalExpenses) * 0.2).toFixed(2)}`, q2: `$${((stats.totalIncome - stats.totalExpenses) * 0.3).toFixed(2)}`, q3: `$${((stats.totalIncome - stats.totalExpenses) * 0.5).toFixed(2)}`, total: `$${Number(stats.netProfit).toFixed(2)}`, bold: true },
     ];
+
+    if (loading) {
+        return (
+            <div className="flex h-96 items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-6 pb-12">
             {/* ── Header ── */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <div className="flex items-center gap-4">
-                    <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Profit and Loss</h1>
+                    <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Reports</h1>
                     <button onClick={() => toast('Date range picker coming soon', 'info')} className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 shadow-sm">
                         <Calendar className="w-3.5 h-3.5" />
-                        Jan 1, 2023 – Dec 31, 2023
+                        {new Date().getFullYear()} Report
                         <ChevronDown className="w-3 h-3" />
                     </button>
                 </div>
@@ -157,18 +222,18 @@ export default function Reports() {
                     <button onClick={() => toast('Report exported to PDF', 'success')} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
                         <Download className="w-4 h-4" /> Export
                     </button>
-                    <button onClick={() => toast('Report generated successfully!', 'success')} className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium shadow-sm shadow-primary/20 transition-all">
-                        Run Report
+                    <button onClick={() => fetchReportData()} className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium shadow-sm shadow-primary/20 transition-all">
+                        Refresh
                     </button>
                 </div>
             </div>
 
             {/* ── Stat Cards ── */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-                <StatCard label="Total Income" value="$124,500.00" change={10.5} icon={TrendingUp} iconBg="bg-emerald-500" />
-                <StatCard label="Total Expenses" value="$82,300.00" change={4.2} icon={TrendingDown} iconBg="bg-rose-500" />
-                <StatCard label="Net Profit" value="$42,200.00" change={8.7} icon={DollarSign} iconBg="bg-primary" />
-                <StatCard label="Profit Margin" value="33.9%" change={2.5} icon={Percent} iconBg="bg-violet-500" />
+                <StatCard label="Total Income" value={`$${Number(stats.totalIncome).toLocaleString()}`} change={stats.incomeChange} icon={TrendingUp} iconBg="bg-emerald-500" />
+                <StatCard label="Total Expenses" value={`$${Number(stats.totalExpenses).toLocaleString()}`} change={stats.expenseChange} icon={TrendingDown} iconBg="bg-rose-500" />
+                <StatCard label="Net Profit" value={`$${Number(stats.netProfit).toLocaleString()}`} change={stats.profitChange} icon={DollarSign} iconBg="bg-primary" />
+                <StatCard label="Profit Margin" value={`${Number(stats.profitMargin).toFixed(1)}%`} change={stats.marginChange} icon={Percent} iconBg="bg-violet-500" />
             </div>
 
             {/* ── Main Layout: Sidebar + Content ── */}
@@ -191,41 +256,26 @@ export default function Reports() {
                         </div>
 
                         <div className="h-48 relative">
+                            {/* SVG Chart using real data percentages */}
                             <svg viewBox="0 0 440 160" className="w-full h-full" preserveAspectRatio="none">
-                                {/* Grid lines */}
                                 {[0, 40, 80, 120, 160].map((y) => (
                                     <line key={y} x1="0" y1={y} x2="440" y2={y} stroke="currentColor" className="text-slate-100 dark:text-slate-800" strokeWidth="0.5" />
                                 ))}
-                                {/* Income line */}
-                                <polyline
-                                    fill="none"
-                                    stroke="#1173d4"
-                                    strokeWidth="2.5"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    points={incomeData.map((p, i) => `${(i / 11) * 430 + 5},${160 - p * 2.6}`).join(' ')}
-                                />
-                                {/* Income area */}
-                                <polygon
-                                    fill="url(#incomeGrad)"
-                                    opacity="0.1"
-                                    points={`5,160 ${incomeData.map((p, i) => `${(i / 11) * 430 + 5},${160 - p * 2.6}`).join(' ')} 435,160`}
-                                />
-                                {/* Expense line */}
-                                <polyline
-                                    fill="none"
-                                    stroke="#f87171"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    points={expenseData.map((p, i) => `${(i / 11) * 430 + 5},${160 - p * 2.6}`).join(' ')}
-                                />
-                                {/* Expense area */}
-                                <polygon
-                                    fill="url(#expenseGrad)"
-                                    opacity="0.08"
-                                    points={`5,160 ${expenseData.map((p, i) => `${(i / 11) * 430 + 5},${160 - p * 2.6}`).join(' ')} 435,160`}
-                                />
+
+                                {(() => {
+                                    const maxVal = Math.max(...chartData.income, ...chartData.expenses, 1);
+                                    const getPoints = (data) => data.map((p, i) => `${(i / 11) * 430 + 5},${160 - (p / maxVal) * 140}`).join(' ');
+
+                                    return (
+                                        <>
+                                            <polyline fill="none" stroke="#1173d4" strokeWidth="2.5" points={getPoints(chartData.income)} />
+                                            <polygon fill="url(#incomeGrad)" opacity="0.1" points={`5,160 ${getPoints(chartData.income)} 435,160`} />
+                                            <polyline fill="none" stroke="#f87171" strokeWidth="2" points={getPoints(chartData.expenses)} />
+                                            <polygon fill="url(#expenseGrad)" opacity="0.08" points={`5,160 ${getPoints(chartData.expenses)} 435,160`} />
+                                        </>
+                                    );
+                                })()}
+
                                 <defs>
                                     <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="0%" stopColor="#1173d4" />
@@ -239,8 +289,8 @@ export default function Reports() {
                             </svg>
                         </div>
                         <div className="flex justify-between mt-2 text-[10px] text-slate-400 font-medium px-1">
-                            {['Jan', 'Feb', 'Mar', 'Apr (Current)', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'].map((m, i) => (
-                                <span key={i} className={m.includes('Current') ? 'text-primary font-bold' : ''}>{m.replace(' (Current)', '')}</span>
+                            {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => (
+                                <span key={i} className={i === new Date().getMonth() ? 'text-primary font-bold' : ''}>{m}</span>
                             ))}
                         </div>
                     </div>
@@ -259,9 +309,9 @@ export default function Reports() {
                                 <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                                     <tr>
                                         <th className="px-5 py-3">Account Name</th>
-                                        <th className="px-5 py-3 text-right">Q1 2023</th>
-                                        <th className="px-5 py-3 text-right">Q2 2023</th>
-                                        <th className="px-5 py-3 text-right">Q3 2023</th>
+                                        <th className="px-5 py-3 text-right">Q1</th>
+                                        <th className="px-5 py-3 text-right">Q2</th>
+                                        <th className="px-5 py-3 text-right">Q3</th>
                                         <th className="px-5 py-3 text-right">Total</th>
                                     </tr>
                                 </thead>

@@ -218,62 +218,70 @@ export default function Inventory() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {paginatedProducts.map((product) => (
-                                        <tr
-                                            key={product.id}
-                                            className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors cursor-pointer"
-                                            onClick={() => navigate(`/inventory/${product.id}`)}
-                                        >
-                                            <td className="px-5 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                                        <Package className="w-4 h-4 text-primary" />
+                                    {paginatedProducts.map((product) => {
+                                        const stockQty = product.stockQuantity || product.stock_quantity || 0;
+                                        const reorderPt = product.reorderPoint || product.reorder_point || 5;
+                                        const cost = product.cost || 0;
+                                        const price = product.price || 0;
+                                        const description = product.description || '';
+
+                                        return (
+                                            <tr
+                                                key={product.id}
+                                                className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors cursor-pointer"
+                                                onClick={() => navigate(`/inventory/${product.id}`)}
+                                            >
+                                                <td className="px-5 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                                            <Package className="w-4 h-4 text-primary" />
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-sm font-semibold text-slate-800 dark:text-white block">{product.name}</span>
+                                                            {description && (
+                                                                <span className="text-xs text-slate-400 line-clamp-1">{description}</span>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <span className="text-sm font-semibold text-slate-800 dark:text-white block">{product.name}</span>
-                                                        {product.description && (
-                                                            <span className="text-xs text-slate-400 line-clamp-1">{product.description}</span>
-                                                        )}
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[11px] font-mono text-slate-500">{product.sku}</span>
+                                                </td>
+                                                <td className="px-5 py-4 text-right text-sm text-slate-600 dark:text-slate-400">
+                                                    ${Number(cost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                </td>
+                                                <td className="px-5 py-4 text-right text-sm font-semibold text-slate-800 dark:text-white">
+                                                    ${Number(price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                </td>
+                                                <td className="px-5 py-4 text-center">
+                                                    <span className="text-sm font-bold text-slate-800 dark:text-white">
+                                                        {Number(stockQty).toLocaleString()}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <StockBadge quantity={stockQty} reorderPoint={reorderPt} />
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                                        <button
+                                                            onClick={() => navigate(`/inventory/${product.id}`)}
+                                                            className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 transition-colors"
+                                                            title="View Details"
+                                                        >
+                                                            <Eye className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(product.id, product.name)}
+                                                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[11px] font-mono text-slate-500">{product.sku}</span>
-                                            </td>
-                                            <td className="px-5 py-4 text-right text-sm text-slate-600 dark:text-slate-400">
-                                                ${(product.cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                            </td>
-                                            <td className="px-5 py-4 text-right text-sm font-semibold text-slate-800 dark:text-white">
-                                                ${(product.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                            </td>
-                                            <td className="px-5 py-4 text-center">
-                                                <span className="text-sm font-bold text-slate-800 dark:text-white">
-                                                    {(product.stockQuantity || 0).toLocaleString()}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <StockBadge quantity={product.stockQuantity || 0} reorderPoint={product.reorderPoint} />
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                                    <button
-                                                        onClick={() => navigate(`/inventory/${product.id}`)}
-                                                        className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 transition-colors"
-                                                        title="View Details"
-                                                    >
-                                                        <Eye className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(product.id, product.name)}
-                                                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -296,8 +304,8 @@ export default function Inventory() {
                                         key={page}
                                         onClick={() => setCurrentPage(page)}
                                         className={`px-2.5 py-1 rounded text-xs font-bold ${currentPage === page
-                                                ? 'bg-primary text-white'
-                                                : 'border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                            ? 'bg-primary text-white'
+                                            : 'border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                                             }`}
                                     >
                                         {page}
