@@ -211,54 +211,104 @@ const AddCustomerModal = ({ isOpen, onClose, onCustomerCreated, toast }) => {
 };
 
 /* ─── Line Item Row ─── */
-const LineItemRow = ({ item, onChange, onRemove }) => (
-    <tr className="border-b border-slate-100 dark:border-slate-800 last:border-0">
-        <td className="py-3 pr-3">
-            <div>
+const LineItemRow = ({ item, onChange, onRemove, products }) => {
+    const [search, setSearch] = useState(item.description || '');
+    const [showProducts, setShowProducts] = useState(false);
+
+    const filtered = products.filter(p =>
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        p.sku.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const handleSelect = (p) => {
+        onChange({
+            ...item,
+            description: p.name,
+            rate: p.price.toString(),
+            sub: p.sku
+        });
+        setSearch(p.name);
+        setShowProducts(false);
+    };
+
+    return (
+        <tr className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+            <td className="py-3 pr-3 relative">
+                <div>
+                    <input
+                        type="text"
+                        value={search}
+                        onFocus={() => setShowProducts(true)}
+                        onChange={(e) => {
+                            setSearch(e.target.value);
+                            onChange({ ...item, description: e.target.value });
+                        }}
+                        placeholder="Select or type an item"
+                        className="w-full text-sm font-medium text-slate-800 dark:text-slate-200 bg-transparent border-0 focus:outline-none placeholder:text-slate-400"
+                    />
+                    {item.sub && <p className="text-[11px] text-slate-400 mt-0.5">{item.sub}</p>}
+
+                    {showProducts && search && (
+                        <div className="absolute z-30 left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                            {filtered.length > 0 ? filtered.map(p => (
+                                <button
+                                    key={p.id}
+                                    onClick={() => handleSelect(p)}
+                                    className="w-full text-left px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 last:border-0"
+                                >
+                                    <div>
+                                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{p.name}</p>
+                                        <p className="text-[10px] text-slate-400">{p.sku}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs font-bold text-primary">${p.price.toFixed(2)}</p>
+                                        <p className="text-[9px] text-slate-400">{p.quantity} in stock</p>
+                                    </div>
+                                </button>
+                            )) : (
+                                <div className="px-3 py-2 text-xs text-slate-400 italic">No products found</div>
+                            )}
+                        </div>
+                    )}
+                </div>
+                {/* Overlay to close products dropdown */}
+                {showProducts && <div className="fixed inset-0 z-20" onClick={() => setShowProducts(false)} />}
+            </td>
+            <td className="py-3 px-3 w-20 relative z-10">
+                <input
+                    type="number"
+                    value={item.qty}
+                    onChange={(e) => onChange({ ...item, qty: Math.max(0, Number(e.target.value)) })}
+                    className="w-full text-sm text-center bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-primary"
+                />
+            </td>
+            <td className="py-3 px-3 w-28 relative z-10">
                 <input
                     type="text"
-                    value={item.description}
-                    onChange={(e) => onChange({ ...item, description: e.target.value })}
-                    placeholder="Select or type an item"
-                    className="w-full text-sm font-medium text-slate-800 dark:text-slate-200 bg-transparent border-0 focus:outline-none placeholder:text-slate-400"
+                    value={item.rate}
+                    onChange={(e) => onChange({ ...item, rate: e.target.value })}
+                    className="w-full text-sm text-right bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-primary"
                 />
-                {item.sub && <p className="text-[11px] text-slate-400 mt-0.5">{item.sub}</p>}
-            </div>
-        </td>
-        <td className="py-3 px-3 w-20">
-            <input
-                type="number"
-                value={item.qty}
-                onChange={(e) => onChange({ ...item, qty: Number(e.target.value) })}
-                className="w-full text-sm text-center bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-primary"
-            />
-        </td>
-        <td className="py-3 px-3 w-28">
-            <input
-                type="text"
-                value={item.rate}
-                onChange={(e) => onChange({ ...item, rate: e.target.value })}
-                className="w-full text-sm text-right bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-primary"
-            />
-        </td>
-        <td className="py-3 px-3 w-20">
-            <input
-                type="number"
-                value={item.tax}
-                onChange={(e) => onChange({ ...item, tax: Number(e.target.value) })}
-                className="w-full text-sm text-center bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-primary"
-            />
-        </td>
-        <td className="py-3 px-3 w-28 text-right">
-            <span className="text-sm font-bold text-slate-800 dark:text-slate-200">${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-        </td>
-        <td className="py-3 pl-3 w-10">
-            <button onClick={onRemove} className="text-slate-300 hover:text-rose-500 transition-colors">
-                <Trash2 className="w-4 h-4" />
-            </button>
-        </td>
-    </tr>
-);
+            </td>
+            <td className="py-3 px-3 w-20 relative z-10">
+                <input
+                    type="number"
+                    value={item.tax}
+                    onChange={(e) => onChange({ ...item, tax: Number(e.target.value) })}
+                    className="w-full text-sm text-center bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-primary"
+                />
+            </td>
+            <td className="py-3 px-3 w-28 text-right relative z-10">
+                <span className="text-sm font-bold text-slate-800 dark:text-slate-200">${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+            </td>
+            <td className="py-3 pl-3 w-10 relative z-10">
+                <button onClick={onRemove} className="text-slate-300 hover:text-rose-500 transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                </button>
+            </td>
+        </tr>
+    );
+};
 
 
 export default function Invoicing() {
@@ -282,19 +332,27 @@ export default function Invoicing() {
     ]);
 
     const [submitting, setSubmitting] = useState(false);
+    const [inventoryProducts, setInventoryProducts] = useState([]);
 
-    // Fetch customers on mount
+    // Fetch customers and products on mount
     useEffect(() => {
-        const fetchCustomers = async () => {
+        const fetchData = async () => {
             try {
-                const res = await api.customers.getAll();
-                const data = res?.data || res || [];
-                setCustomers(Array.isArray(data) ? data : []);
+                const [custRes, prodRes] = await Promise.all([
+                    api.customers.getAll(),
+                    api.inventory.getAll()
+                ]);
+
+                const custData = custRes?.data || custRes || [];
+                setCustomers(Array.isArray(custData) ? custData : []);
+
+                const prodData = prodRes?.data || prodRes || [];
+                setInventoryProducts(Array.isArray(prodData) ? prodData : []);
             } catch (err) {
-                console.error('Failed to load customers:', err);
+                console.error('Failed to load data:', err);
             }
         };
-        fetchCustomers();
+        fetchData();
     }, []);
 
     const filteredCustomers = customers.filter(c =>
@@ -341,34 +399,54 @@ export default function Invoicing() {
     };
 
     const handleSendInvoice = async () => {
-        if (!customer.name) {
+        if (!customer.id) {
             toast('Please select a customer', 'warning');
+            return;
+        }
+
+        const validItems = lineItems
+            .filter(item => item.description.trim() && Number(item.qty) > 0)
+            .map(item => ({
+                description: item.description,
+                quantity: Number(item.qty),
+                rate: typeof item.rate === 'string' ? parseFloat(item.rate.replace(/[^0-9.-]+/g, "")) : item.rate,
+                taxPercentage: Number(item.tax)
+            }));
+
+        if (validItems.length === 0) {
+            toast('Please add at least one valid item with quantity > 0', 'warning');
             return;
         }
 
         setSubmitting(true);
         try {
             const invoiceData = {
-                customerId: customer.id || 'cust_default',
+                customerId: customer.id,
                 invoiceNumber: `INV-${Date.now().toString().slice(-4)}`,
                 issueDate: new Date().toISOString(),
                 dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
                 currency: 'USD',
-                items: lineItems
-                    .filter(item => item.description)
-                    .map(item => ({
-                        description: item.description,
-                        quantity: Number(item.qty),
-                        rate: typeof item.rate === 'string' ? parseFloat(item.rate.replace(/[^0-9.-]+/g, "")) : item.rate,
-                        taxPercentage: Number(item.tax)
-                    })),
-                discount: Number(lineItems.discount || 0),
+                items: validItems,
+                discount: 0,
                 notes: '',
-                status: 'draft'
+                taxTotal: taxAmount,
+                status: 'draft',
+                subtotal,
+                totalAmount: total
             };
 
-            await api.invoices.create(invoiceData);
-            toast('Invoice sent to client!', 'success');
+
+
+            const res = await api.invoices.create(invoiceData);
+            const createdInvoice = res?.data || res;
+
+            if (createdInvoice && createdInvoice.id) {
+                await api.invoices.send(createdInvoice.id);
+                toast('Invoice created and sent successfully!', 'success');
+            } else {
+                toast('Invoice created successfully!', 'success');
+            }
+
             setTimeout(() => navigate('/sales'), 1200);
         } catch (error) {
             console.error('Failed to send invoice:', error);
@@ -533,6 +611,7 @@ export default function Invoicing() {
                                         <LineItemRow
                                             key={item.id}
                                             item={item}
+                                            products={inventoryProducts}
                                             onChange={(updated) => updateItem(idx, updated)}
                                             onRemove={() => removeItem(idx)}
                                         />
@@ -685,7 +764,7 @@ export default function Invoicing() {
                                         </div>
                                         <div className="flex justify-between text-slate-500">
                                             <span>+Tax (10%)</span>
-                                            <span>$120.00</span>
+                                            {/* <span>$120.00</span> */}
                                         </div>
                                         <div className="flex justify-between font-bold text-slate-800 dark:text-white pt-2 border-t border-slate-100 dark:border-slate-700 mt-2">
                                             <span>Grand Total</span>

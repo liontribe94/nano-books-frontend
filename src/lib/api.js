@@ -40,10 +40,11 @@ export const api = {
 
     // Invoices
     invoices: {
-        getAll: () => apiRequest('/invoices'),
+        getAll: () => apiRequest('/invoices', { method: "GET" }),
         getOne: (id) => apiRequest(`/invoices/${id}`),
-        create: (data) => apiRequest('/invoices', { method: 'POST', body: JSON.stringify(data) }),
+        create: (data) => apiRequest('/invoices/create', { method: 'POST', body: JSON.stringify(data) }),
         update: (id, data) => apiRequest(`/invoices/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+        send: (id) => apiRequest(`/invoices/${id}/send`, { method: 'PATCH' }),
         markAsPaid: (id) => apiRequest(`/invoices/${id}/pay`, { method: 'PATCH' }),
         delete: (id) => apiRequest(`/invoices/${id}`, { method: 'DELETE' }),
     },

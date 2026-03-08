@@ -67,22 +67,53 @@ export default function Sales() {
     const toast = useToast();
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({
+        totalRevenue: 0,
+        pendingAmount: 0,
+        overdueAmount: 0
+    });
 
     useEffect(() => {
         const fetchInvoices = async () => {
             try {
-                const data = await api.invoices.getAll();
+                const res = await api.invoices.getAll();
+                const data = res?.data || res || [];
+
                 // Map the backend data to match the UI component's expected structure
-                const formattedInvoices = Array.isArray(data.items || data) ? (data.items || data).map(inv => ({
-                    id: inv.invoiceNumber || inv.id,
-                    client: inv.customer?.name || inv.customerId || 'Unknown Client',
-                    amount: `$${(inv.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
-                    date: new Date(inv.issueDate || inv.createdAt).toLocaleDateString(),
-                    status: inv.status === 'draft' ? 'draft' : // Mapping statuses to component expectations if needed
-                        inv.status === 'paid' ? 'Paid' :
-                            inv.status === 'sent' ? 'Pending' :
-                                inv.status === 'overdue' ? 'Overdue' : 'Pending'
-                })) : [];
+                const formattedInvoices = data.map(inv => {
+                    const id = inv.invoice_number || inv.invoiceNumber || inv.id;
+                    const amount = Number(inv.total_amount || inv.totalAmount || 0);
+                    const client = inv.customer?.name || inv.customerName || inv.customerId || 'Unknown Client';
+                    const date = new Date(inv.issue_date || inv.issueDate || inv.created_at || inv.createdAt).toLocaleDateString();
+
+                    return {
+                        id,
+                        client,
+                        amount: `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+                        numericAmount: amount,
+                        date,
+                        status: inv.status === 'draft' ? 'draft' :
+                            inv.status === 'paid' ? 'Paid' :
+                                inv.status === 'sent' ? 'Pending' :
+                                    inv.status === 'overdue' ? 'Overdue' : 'Pending'
+                    };
+                });
+
+                // Calculate stats based on formatted invoices
+                const newStats = data.reduce((acc, inv) => {
+                    const amount = Number(inv.total_amount || inv.totalAmount || 0);
+                    const status = (inv.status || '').toLowerCase();
+                    if (status === 'paid') {
+                        acc.totalRevenue += amount;
+                    } else if (status === 'sent' || status === 'draft' || status === 'pending') {
+                        acc.pendingAmount += amount;
+                    } else if (status === 'overdue') {
+                        acc.overdueAmount += amount;
+                    }
+                    return acc;
+                }, { totalRevenue: 0, pendingAmount: 0, overdueAmount: 0 });
+
+                setStats(newStats);
                 setInvoices(formattedInvoices);
             } catch (error) {
                 console.error("Failed to load invoices", error);
@@ -128,15 +159,15 @@ export default function Sales() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-primary/5 border border-primary/10 p-6 rounded-xl">
                     <p className="text-primary font-medium text-sm mb-1">Total Revenue</p>
-                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">$45,280.00</h3>
+                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">${stats.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
                 </div>
                 <div className="bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/10 p-6 rounded-xl">
                     <p className="text-amber-600 font-medium text-sm mb-1">Pending Amount</p>
-                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">$12,450.00</h3>
+                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">${stats.pendingAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
                 </div>
                 <div className="bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/10 p-6 rounded-xl">
                     <p className="text-rose-600 font-medium text-sm mb-1">Overdue</p>
-                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">$2,830.00</h3>
+                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">${stats.overdueAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
                 </div>
             </div>
 
@@ -187,10 +218,10 @@ export default function Sales() {
 
                 {/* Pagination */}
                 <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm text-slate-500">
-                    <span>Showing 1-5 of 24 invoices</span>
+                    <span>Showing 1-{invoices.length} of {invoices.length} invoices</span>
                     <div className="flex gap-2">
                         <button className="px-3 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50" disabled>Previous</button>
-                        <button onClick={() => toast('Loading page 2...', 'info')} className="px-3 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800">Next</button>
+                        <button onClick={() => toast('No more pages', 'info')} className="px-3 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50" disabled>Next</button>
                     </div>
                 </div>
             </div>
