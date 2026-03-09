@@ -59,11 +59,11 @@ export default function Sidebar({ isOpen, onClose }) {
             isOpen ? "translate-x-0" : "-translate-x-full"
         )}>
             <div className="p-6 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                        <Landmark className="text-white w-5 h-5" />
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/30">
+                        N
                     </div>
-                    <span className="font-bold text-xl tracking-tight text-slate-800 dark:text-white">Nano Books</span>
+                    <span className="font-bold text-xl tracking-tight text-slate-800 dark:text-white">Nano<span className="text-primary">Books</span></span>
                 </div>
                 <button
                     onClick={onClose}

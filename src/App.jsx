@@ -6,6 +6,7 @@ import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
 import Sales from './pages/Sales';
 import Employees from './pages/Employees';
+import EmployeeProfile from './pages/EmployeeProfile'; // Added import
 import Invoicing from './pages/Invoicing';
 import Payroll from './pages/Payroll';
 import Inventory from './pages/Inventory';
@@ -42,6 +43,7 @@ function App() {
             }>
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="employees" element={<Employees />} />
+              <Route path="employees/:id" element={<EmployeeProfile />} /> {/* Added route */}
               <Route path="sales" element={<Sales />} />
               <Route path="invoicing" element={<Invoicing />} />
               <Route path="payroll" element={<Payroll />} />

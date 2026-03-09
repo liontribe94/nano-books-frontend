@@ -56,8 +56,11 @@ export default function Login() {
                 {/* Left Side - Form */}
                 <div className="p-8 md:p-12 flex flex-col justify-center order-2 md:order-1">
                     <div className="mb-8 text-center md:text-left">
-                        <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-primary text-white font-bold text-xl mb-4 shadow-lg shadow-primary/30">
-                            N
+                        <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
+                            <div className="w-10 h-10 rounded-xl bg-primary text-white font-bold text-xl shadow-lg shadow-primary/30 flex items-center justify-center">
+                                N
+                            </div>
+                            <span className="font-bold text-2xl tracking-tight text-slate-900 dark:text-white">Nano<span className="text-primary">Books</span></span>
                         </div>
                         <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
                             {isLogin ? 'Welcome back' : 'Create an account'}
