@@ -12,10 +12,11 @@ import {
     BarChart3,
     HelpCircle,
     Settings,
-    Landmark,
+    LogOut,
     X
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useAuth } from '../../context/AuthContext';
 
 const SidebarItem = ({ icon: Icon, label, to, active, onClick }) => (
     <Link
@@ -35,6 +36,7 @@ const SidebarItem = ({ icon: Icon, label, to, active, onClick }) => (
 
 export default function Sidebar({ isOpen, onClose }) {
     const location = useLocation();
+    const { logout } = useAuth();
 
     const mainNav = [
         { icon: LayoutDashboard, label: 'Dashboard', to: '/dashboard' },
@@ -94,6 +96,16 @@ export default function Sidebar({ isOpen, onClose }) {
                             onClick={onClose}
                         />
                     ))}
+                    <button
+                        onClick={() => {
+                            logout();
+                            onClose?.();
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                        <LogOut className="w-5 h-5" />
+                        <span>Logout</span>
+                    </button>
                 </div>
             </nav>
 
