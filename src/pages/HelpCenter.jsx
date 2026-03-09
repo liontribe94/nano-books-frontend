@@ -15,13 +15,11 @@ import {
     HelpCircle,
     Zap
 } from 'lucide-react';
-import { useToast } from '../components/ui/Toast';
 
-/* eslint-disable react/prop-types */
-const CategoryCard = ({ icon: Icon, title, description, count }) => (
+const CategoryCard = ({ icon, title, description, count }) => (
     <button className="flex flex-col items-start p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all group text-left">
         <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary/10 transition-colors">
-            <Icon className="w-6 h-6 text-slate-400 group-hover:text-primary transition-colors" />
+            {React.createElement(icon, { className: 'w-6 h-6 text-slate-400 group-hover:text-primary transition-colors' })}
         </div>
         <h3 className="font-bold text-slate-800 dark:text-white mb-1">{title}</h3>
         <p className="text-sm text-slate-500 mb-3">{description}</p>
@@ -54,7 +52,6 @@ const FAQItem = ({ question, answer }) => {
 };
 
 export default function HelpCenter() {
-    const toast = useToast();
     const [searchQuery, setSearchQuery] = useState('');
 
     const categories = [
@@ -162,14 +159,14 @@ export default function HelpCenter() {
 
                         <div className="space-y-3">
                             <button
-                                onClick={() => toast('Live chat connecting...', 'info')}
+                                onClick={() => window.open('mailto:support@nanobooks.com?subject=Live%20Chat%20Request','_blank')}
                                 className="w-full flex items-center justify-center gap-3 py-3.5 bg-white text-primary rounded-xl font-bold hover:bg-slate-50 transition-all shadow-lg"
                             >
                                 <MessageCircle className="w-5 h-5" />
                                 Start Live Chat
                             </button>
                             <button
-                                onClick={() => toast('Support ticket email drafted', 'success')}
+                                onClick={() => window.open('mailto:support@nanobooks.com?subject=Support%20Request','_blank')}
                                 className="w-full flex items-center justify-center gap-3 py-3.5 bg-primary/20 border border-white/20 text-white rounded-xl font-bold hover:bg-white/10 transition-all"
                             >
                                 <Mail className="w-5 h-5" />
@@ -204,7 +201,7 @@ export default function HelpCenter() {
                             </div>
                         </div>
                         <button
-                            onClick={() => toast('Redirecting to community...', 'info')}
+                            onClick={() => window.open('https://github.com','_blank')}
                             className="w-full mt-8 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                         >
                             Visit Community
@@ -225,3 +222,6 @@ export default function HelpCenter() {
         </div>
     );
 }
+
+
+

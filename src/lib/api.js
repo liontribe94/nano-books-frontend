@@ -15,7 +15,7 @@ const apiRequest = async (endpoint, options = {}) => {
 
     if (!response.ok) {
         const error = await response.json().catch(() => ({ message: 'An error occurred' }));
-        throw new Error(error.message || response.statusText);
+        throw new Error(error.error || error.message || response.statusText);
     }
 
     return response.json();
@@ -29,6 +29,21 @@ export const api = {
         getProfile: () => apiRequest('/users/profile'),
     },
 
+    // Organization / Team
+    organization: {
+        get: () => apiRequest('/organization'),
+        team: {
+            getMembers: () => apiRequest('/organization/team'),
+            updateRole: (userId, role) => apiRequest(`/organization/team/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
+            remove: (userId) => apiRequest(`/organization/team/${userId}`, { method: 'DELETE' }),
+        },
+        invitations: {
+            getAll: () => apiRequest('/organization/invitations'),
+            create: (data) => apiRequest('/organization/invitations', { method: 'POST', body: JSON.stringify(data) }),
+            revoke: (id) => apiRequest(`/organization/invitations/${id}`, { method: 'DELETE' }),
+        }
+    },
+
     // Customers
     customers: {
         getAll: () => apiRequest('/customers'),
@@ -40,7 +55,7 @@ export const api = {
 
     // Invoices
     invoices: {
-        getAll: () => apiRequest('/invoices', { method: "GET" }),
+        getAll: () => apiRequest('/invoices', { method: 'GET' }),
         getOne: (id) => apiRequest(`/invoices/${id}`),
         create: (data) => apiRequest('/invoices/create', { method: 'POST', body: JSON.stringify(data) }),
         update: (id, data) => apiRequest(`/invoices/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
@@ -59,7 +74,7 @@ export const api = {
 
     // Inventory / Products
     inventory: {
-        getAll: (params) => apiRequest('/products?' + new URLSearchParams(params)),
+        getAll: (params) => apiRequest('/products?' + new URLSearchParams(params || {})),
         getOne: (id) => apiRequest(`/products/${id}`),
         create: (data) => apiRequest('/products', { method: 'POST', body: JSON.stringify(data) }),
         update: (id, data) => apiRequest(`/products/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
@@ -71,7 +86,7 @@ export const api = {
 
     // Employees
     employees: {
-        getAll: (params) => apiRequest('/employees?' + new URLSearchParams(params)),
+        getAll: (params) => apiRequest('/employees?' + new URLSearchParams(params || {})),
         getOne: (id) => apiRequest(`/employees/${id}`),
         create: (data) => apiRequest('/employees', { method: 'POST', body: JSON.stringify(data) }),
         update: (id, data) => apiRequest(`/employees/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
@@ -83,7 +98,7 @@ export const api = {
     // Payroll
     payroll: {
         getCurrentCycle: () => apiRequest('/payroll/current'),
-        getHistory: (params) => apiRequest('/payroll/history?' + new URLSearchParams(params)),
+        getHistory: (params) => apiRequest('/payroll/history?' + new URLSearchParams(params || {})),
         calculate: (data) => apiRequest('/payroll/calculate', { method: 'POST', body: JSON.stringify(data) }),
         submit: (data) => apiRequest('/payroll/submit', { method: 'POST', body: JSON.stringify(data) }),
         getStats: () => apiRequest('/payroll/stats'),
@@ -97,7 +112,7 @@ export const api = {
 
     // Expenses
     expenses: {
-        getAll: (params) => apiRequest('/expenses?' + new URLSearchParams(params)),
+        getAll: (params) => apiRequest('/expenses?' + new URLSearchParams(params || {})),
         getOne: (id) => apiRequest(`/expenses/${id}`),
         create: (data) => apiRequest('/expenses', { method: 'POST', body: JSON.stringify(data) }),
         update: (id, data) => apiRequest(`/expenses/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),

@@ -6,7 +6,7 @@ import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
 import Sales from './pages/Sales';
 import Employees from './pages/Employees';
-import EmployeeProfile from './pages/EmployeeProfile'; // Added import
+import EmployeeProfile from './pages/EmployeeProfile';
 import Invoicing from './pages/Invoicing';
 import Payroll from './pages/Payroll';
 import Inventory from './pages/Inventory';
@@ -16,6 +16,7 @@ import Expenses from './pages/Expenses';
 import LandingPage from './pages/LandingPage';
 import Pricing from './pages/Pricing';
 import Login from './pages/Login';
+import AcceptInvite from './pages/AcceptInvite';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AddExpense from './pages/AddExpense';
 import Banking from './pages/Banking';
@@ -34,8 +35,8 @@ function App() {
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Login />} />
+            <Route path="/accept-invite" element={<AcceptInvite />} />
 
-            {/* App Routes wrapped in Layout and ProtectedRoute */}
             <Route element={
               <ProtectedRoute>
                 <Layout />
@@ -43,7 +44,7 @@ function App() {
             }>
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="employees" element={<Employees />} />
-              <Route path="employees/:id" element={<EmployeeProfile />} /> {/* Added route */}
+              <Route path="employees/:id" element={<EmployeeProfile />} />
               <Route path="sales" element={<Sales />} />
               <Route path="invoicing" element={<Invoicing />} />
               <Route path="payroll" element={<Payroll />} />

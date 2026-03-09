@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui/Toast';
 import { api } from '../lib/api';
@@ -12,49 +12,52 @@ import {
     CheckCircle2,
     Clock,
     AlertCircle,
-    Loader2
+    Loader2,
+    RefreshCw
 } from 'lucide-react';
 
-const InvoiceRow = ({ id, client, amount, date, status, onAction }) => {
-    const statusStyles = {
-        Paid: "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600",
-        Pending: "bg-amber-50 dark:bg-amber-500/10 text-amber-600",
-        Overdue: "bg-rose-50 dark:bg-rose-500/10 text-rose-600",
-        draft: "bg-slate-50 dark:bg-slate-500/10 text-slate-600"
-    };
+const statusStyles = {
+    Paid: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600',
+    Pending: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600',
+    Overdue: 'bg-rose-50 dark:bg-rose-500/10 text-rose-600',
+    draft: 'bg-slate-50 dark:bg-slate-500/10 text-slate-600'
+};
 
-    const StatusIcon = {
-        Paid: CheckCircle2,
-        Pending: Clock,
-        Overdue: AlertCircle,
-        draft: FileText
-    }[status] || Clock; // Fallback to Clock if not one of these
+const statusIcons = {
+    Paid: CheckCircle2,
+    Pending: Clock,
+    Overdue: AlertCircle,
+    draft: FileText
+};
+
+const InvoiceRow = ({ invoice, onAction }) => {
+    const StatusIcon = statusIcons[invoice.status] || Clock;
 
     return (
         <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors border-b border-slate-100 dark:border-slate-800 last:border-0">
             <td className="px-6 py-4">
-                <span className="font-medium text-slate-800 dark:text-slate-200">#{id}</span>
+                <span className="font-medium text-slate-800 dark:text-slate-200">#{invoice.displayId}</span>
             </td>
             <td className="px-6 py-4">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-                        {client.substring(0, 2).toUpperCase()}
+                        {invoice.client.substring(0, 2).toUpperCase()}
                     </div>
-                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{client}</span>
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{invoice.client}</span>
                 </div>
             </td>
-            <td className="px-6 py-4 text-center text-sm text-slate-500">{date}</td>
+            <td className="px-6 py-4 text-center text-sm text-slate-500">{invoice.date}</td>
             <td className="px-6 py-4 text-right font-bold text-slate-800 dark:text-slate-200">
-                {amount}
+                {invoice.amountLabel}
             </td>
             <td className="px-6 py-4 text-center">
-                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase ${statusStyles[status] || statusStyles.draft}`}>
+                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase ${statusStyles[invoice.status] || statusStyles.draft}`}>
                     <StatusIcon className="w-3.5 h-3.5" />
-                    {status}
+                    {invoice.status}
                 </div>
             </td>
             <td className="px-6 py-4 text-center">
-                <button onClick={() => onAction(id)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                <button onClick={() => onAction(invoice)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
                     <MoreHorizontal className="w-5 h-5" />
                 </button>
             </td>
@@ -67,65 +70,111 @@ export default function Sales() {
     const toast = useToast();
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState({
-        totalRevenue: 0,
-        pendingAmount: 0,
-        overdueAmount: 0
-    });
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [stats, setStats] = useState({ totalRevenue: 0, pendingAmount: 0, overdueAmount: 0 });
+
+    const fetchInvoices = async () => {
+        setLoading(true);
+        try {
+            const res = await api.invoices.getAll();
+            const data = res?.data || res || [];
+
+            const formatted = data.map((inv) => {
+                const amount = Number(inv.total_amount || inv.totalAmount || 0);
+                const rawStatus = (inv.status || 'pending').toLowerCase();
+                const status = rawStatus === 'draft'
+                    ? 'draft'
+                    : rawStatus === 'paid'
+                        ? 'Paid'
+                        : rawStatus === 'overdue'
+                            ? 'Overdue'
+                            : 'Pending';
+
+                return {
+                    backendId: inv.id,
+                    displayId: inv.invoice_number || inv.invoiceNumber || inv.id,
+                    client: inv.customer?.name || inv.customerName || inv.customerId || 'Unknown Client',
+                    amount,
+                    amountLabel: `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+                    date: new Date(inv.issue_date || inv.issueDate || inv.created_at || inv.createdAt || Date.now()).toLocaleDateString(),
+                    rawStatus,
+                    status
+                };
+            });
+
+            const computed = data.reduce((acc, inv) => {
+                const amount = Number(inv.total_amount || inv.totalAmount || 0);
+                const status = (inv.status || '').toLowerCase();
+                if (status === 'paid') acc.totalRevenue += amount;
+                else if (status === 'overdue') acc.overdueAmount += amount;
+                else acc.pendingAmount += amount;
+                return acc;
+            }, { totalRevenue: 0, pendingAmount: 0, overdueAmount: 0 });
+
+            setInvoices(formatted);
+            setStats(computed);
+        } catch (error) {
+            toast(error.message || 'Failed to load invoices', 'error');
+            setInvoices([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchInvoices = async () => {
-            try {
-                const res = await api.invoices.getAll();
-                const data = res?.data || res || [];
-
-                // Map the backend data to match the UI component's expected structure
-                const formattedInvoices = data.map(inv => {
-                    const id = inv.invoice_number || inv.invoiceNumber || inv.id;
-                    const amount = Number(inv.total_amount || inv.totalAmount || 0);
-                    const client = inv.customer?.name || inv.customerName || inv.customerId || 'Unknown Client';
-                    const date = new Date(inv.issue_date || inv.issueDate || inv.created_at || inv.createdAt).toLocaleDateString();
-
-                    return {
-                        id,
-                        client,
-                        amount: `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
-                        numericAmount: amount,
-                        date,
-                        status: inv.status === 'draft' ? 'draft' :
-                            inv.status === 'paid' ? 'Paid' :
-                                inv.status === 'sent' ? 'Pending' :
-                                    inv.status === 'overdue' ? 'Overdue' : 'Pending'
-                    };
-                });
-
-                // Calculate stats based on formatted invoices
-                const newStats = data.reduce((acc, inv) => {
-                    const amount = Number(inv.total_amount || inv.totalAmount || 0);
-                    const status = (inv.status || '').toLowerCase();
-                    if (status === 'paid') {
-                        acc.totalRevenue += amount;
-                    } else if (status === 'sent' || status === 'draft' || status === 'pending') {
-                        acc.pendingAmount += amount;
-                    } else if (status === 'overdue') {
-                        acc.overdueAmount += amount;
-                    }
-                    return acc;
-                }, { totalRevenue: 0, pendingAmount: 0, overdueAmount: 0 });
-
-                setStats(newStats);
-                setInvoices(formattedInvoices);
-            } catch (error) {
-                console.error("Failed to load invoices", error);
-                toast('Failed to load invoices.', 'error');
-                setInvoices([]);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchInvoices();
     }, []);
+
+    const filteredInvoices = useMemo(() => {
+        return invoices.filter((inv) => {
+            const matchesSearch = !searchTerm
+                || inv.client.toLowerCase().includes(searchTerm.toLowerCase())
+                || String(inv.displayId).toLowerCase().includes(searchTerm.toLowerCase());
+
+            const matchesStatus = statusFilter === 'all' || inv.status.toLowerCase() === statusFilter;
+            return matchesSearch && matchesStatus;
+        });
+    }, [invoices, searchTerm, statusFilter]);
+
+    const handleQuickAction = async (invoice) => {
+        if (!invoice.backendId) {
+            toast('Cannot run action for this invoice', 'warning');
+            return;
+        }
+
+        try {
+            if (invoice.status === 'draft') {
+                await api.invoices.send(invoice.backendId);
+                toast(`Invoice #${invoice.displayId} sent`, 'success');
+            } else if (invoice.status === 'Pending' || invoice.status === 'Overdue') {
+                await api.invoices.markAsPaid(invoice.backendId);
+                toast(`Invoice #${invoice.displayId} marked as paid`, 'success');
+            } else {
+                await api.invoices.getOne(invoice.backendId);
+                toast(`Invoice #${invoice.displayId} is already paid`, 'info');
+            }
+            fetchInvoices();
+        } catch (error) {
+            toast(error.message || 'Invoice action failed', 'error');
+        }
+    };
+
+    const handleExport = () => {
+        const header = ['invoice_id', 'client', 'date', 'amount', 'status'];
+        const rows = filteredInvoices.map((inv) => [inv.displayId, inv.client, inv.date, inv.amount, inv.status]);
+        const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'invoices.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+
+        toast('Invoices exported', 'success');
+    };
 
     if (loading) {
         return (
@@ -137,14 +186,13 @@ export default function Sales() {
 
     return (
         <div className="flex flex-col gap-8">
-            {/* Page Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Sales & Invoices</h1>
                     <p className="text-slate-500 dark:text-slate-400">Manage your invoices and track payments.</p>
                 </div>
                 <div className="flex gap-3">
-                    <button onClick={() => toast('Sales data exported to CSV', 'success')} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
+                    <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
                         <Download className="w-4 h-4" />
                         Export
                     </button>
@@ -155,7 +203,6 @@ export default function Sales() {
                 </div>
             </div>
 
-            {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-primary/5 border border-primary/10 p-6 rounded-xl">
                     <p className="text-primary font-medium text-sm mb-1">Total Revenue</p>
@@ -171,31 +218,33 @@ export default function Sales() {
                 </div>
             </div>
 
-            {/* Invoices Table */}
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                {/* Filters */}
                 <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-4 justify-between items-center">
                     <div className="relative w-full sm:w-64">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                         <input
                             type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Search invoices..."
                             className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                         />
                     </div>
                     <div className="flex gap-2 w-full sm:w-auto">
-                        <button onClick={() => toast('Filter options coming soon', 'info')} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        <button
+                            onClick={() => setStatusFilter((s) => s === 'all' ? 'pending' : s === 'pending' ? 'paid' : s === 'paid' ? 'overdue' : s === 'overdue' ? 'draft' : 'all')}
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        >
                             <Filter className="w-4 h-4" />
-                            Filter
+                            Filter: {statusFilter}
                         </button>
-                        <button onClick={() => toast('Column visibility toggled', 'info')} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                            <FileText className="w-4 h-4" />
-                            Columns
+                        <button onClick={fetchInvoices} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                            <RefreshCw className="w-4 h-4" />
+                            Refresh
                         </button>
                     </div>
                 </div>
 
-                {/* Table */}
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
@@ -209,20 +258,20 @@ export default function Sales() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {invoices.map((invoice, idx) => (
-                                <InvoiceRow key={idx} {...invoice} onAction={(id) => toast(`Viewing invoice #${id}`, 'info')} />
+                            {filteredInvoices.map((invoice) => (
+                                <InvoiceRow key={invoice.backendId || invoice.displayId} invoice={invoice} onAction={handleQuickAction} />
                             ))}
+                            {filteredInvoices.length === 0 && (
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-10 text-center text-slate-500">No invoices found</td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
 
-                {/* Pagination */}
                 <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm text-slate-500">
-                    <span>Showing 1-{invoices.length} of {invoices.length} invoices</span>
-                    <div className="flex gap-2">
-                        <button className="px-3 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50" disabled>Previous</button>
-                        <button onClick={() => toast('No more pages', 'info')} className="px-3 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50" disabled>Next</button>
-                    </div>
+                    <span>Showing {filteredInvoices.length} of {invoices.length} invoices</span>
                 </div>
             </div>
         </div>

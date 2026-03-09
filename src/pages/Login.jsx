@@ -19,7 +19,7 @@ export default function Login() {
     const navigate = useNavigate();
     const toast = useToast();
 
-    const from = location.state?.from?.pathname || "/dashboard";
+    const from = location.state?.from?.pathname || '/dashboard';
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -53,7 +53,6 @@ export default function Login() {
         <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
             <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
 
-                {/* Left Side - Form */}
                 <div className="p-8 md:p-12 flex flex-col justify-center order-2 md:order-1">
                     <div className="mb-8 text-center md:text-left">
                         <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
@@ -141,7 +140,7 @@ export default function Login() {
                                     value={formData.password}
                                     onChange={handleChange}
                                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
-                                    placeholder="••••••••"
+                                    placeholder="password"
                                 />
                             </div>
                         </div>
@@ -164,7 +163,7 @@ export default function Login() {
 
                     <div className="mt-8 text-center">
                         <p className="text-sm text-slate-500">
-                            {isLogin ? "Don't have an account?" : "Already have an account?"}{' '}
+                            {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
                             <button
                                 onClick={() => navigate(isLogin ? '/signup' : '/login')}
                                 className="font-semibold text-primary hover:text-primary/80 transition-colors"
@@ -175,7 +174,6 @@ export default function Login() {
                     </div>
                 </div>
 
-                {/* Right Side - Image/Feature */}
                 <div className="relative hidden md:block order-1 md:order-2 bg-slate-900 overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-purple-600/80 z-10"></div>
                     <img
@@ -190,9 +188,7 @@ export default function Login() {
                             </div>
                         </div>
                         <div>
-                            <h3 className="text-3xl font-bold mb-4 leading-tight">
-                                "NanoBooks transformed how we manage our global inventory."
-                            </h3>
+                            <h3 className="text-3xl font-bold mb-4 leading-tight">"NanoBooks transformed how we manage our global inventory."</h3>
                             <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 rounded-full bg-white/20"></div>
                                 <div>

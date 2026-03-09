@@ -23,10 +23,10 @@ const SidebarItem = ({ icon: Icon, label, to, active, onClick }) => (
         to={to}
         onClick={onClick}
         className={cn(
-            "flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors",
+            'flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors',
             active
-                ? "bg-primary/10 text-primary"
-                : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                ? 'bg-primary/10 text-primary'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
         )}
     >
         <Icon className="w-5 h-5" />
@@ -34,21 +34,48 @@ const SidebarItem = ({ icon: Icon, label, to, active, onClick }) => (
     </Link>
 );
 
+const canViewNavItem = (role, navRole) => {
+    if (!navRole) return true;
+    if (Array.isArray(navRole)) return navRole.includes(role);
+    return navRole === role;
+};
+
 export default function Sidebar({ isOpen, onClose }) {
     const location = useLocation();
-    const { logout } = useAuth();
+    const { user, logout } = useAuth();
+    const currentUser = user?.user ?? user;
+    const role = currentUser?.role || 'viewer';
+
+    const displayName =
+        currentUser?.name ||
+        currentUser?.fullName ||
+        currentUser?.username ||
+        currentUser?.email ||
+        'User';
+    const subtitle =
+        currentUser?.companyName ||
+        role ||
+        currentUser?.email ||
+        'Signed in';
+    const avatarUrl = currentUser?.avatar || currentUser?.photo || currentUser?.profilePicture;
+    const initials = displayName
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() || '')
+        .join('');
 
     const mainNav = [
         { icon: LayoutDashboard, label: 'Dashboard', to: '/dashboard' },
-        { icon: Users, label: 'Employees', to: '/employees' },
+        { icon: Users, label: 'Employees', to: '/employees', roles: ['admin'] },
         { icon: ShoppingBag, label: 'Sales', to: '/sales' },
-        { icon: FileText, label: 'Invoicing', to: '/invoicing' },
-        { icon: Banknote, label: 'Payroll', to: '/payroll' },
-        { icon: Package, label: 'Inventory', to: '/inventory' },
-        { icon: Receipt, label: 'Expenses', to: '/expenses' },
+        { icon: FileText, label: 'Invoicing', to: '/invoicing', roles: ['admin', 'accountant'] },
+        { icon: Banknote, label: 'Payroll', to: '/payroll', roles: ['admin'] },
+        { icon: Package, label: 'Inventory', to: '/inventory', roles: ['admin', 'accountant'] },
+        { icon: Receipt, label: 'Expenses', to: '/expenses', roles: ['admin', 'accountant'] },
         { icon: Wallet, label: 'Banking', to: '/banking' },
         { icon: BarChart3, label: 'Reports', to: '/reports' },
-    ];
+    ].filter((item) => canViewNavItem(role, item.roles));
 
     const supportNav = [
         { icon: HelpCircle, label: 'Help Center', to: '/help' },
@@ -57,8 +84,8 @@ export default function Sidebar({ isOpen, onClose }) {
 
     return (
         <aside className={cn(
-            "fixed inset-y-0 left-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-300 z-50 lg:static lg:translate-x-0 w-64",
-            isOpen ? "translate-x-0" : "-translate-x-full"
+            'fixed inset-y-0 left-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-300 z-50 lg:static lg:translate-x-0 w-64',
+            isOpen ? 'translate-x-0' : '-translate-x-full'
         )}>
             <div className="p-6 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -111,14 +138,20 @@ export default function Sidebar({ isOpen, onClose }) {
 
             <div className="p-4 border-t border-slate-100 dark:border-slate-800">
                 <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 flex items-center gap-3">
-                    <img
-                        className="w-10 h-10 rounded-full border border-white dark:border-slate-700"
-                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIxKCiBZW3oPpkLFD6MBdDk25XrvyLMGXKu5YVTe2F0Q82Sj06g3UgSIh6zitgj876Hq8ich4WSx4fRg4AP4AfzTcCsnR3aKBE4Sts7vKMnqROt9lyoBK4tNQ8Fa8DfnylmRYyXAmza6GvGsOjcECGtFVl0FnPSetEFkpiLM84at3cziyw7xa8D1ZevwlvJcE0iznHFZ8JzwCWWCiPn4WOaze2WXqi7B3Y0U7vaZax1RWgU8IpY4Dh1GdqbPXO7RaaFOl5itn06C2k"
-                        alt="User avatar"
-                    />
+                    {avatarUrl ? (
+                        <img
+                            className="w-10 h-10 rounded-full border border-white dark:border-slate-700 object-cover"
+                            src={avatarUrl}
+                            alt={`${displayName} avatar`}
+                        />
+                    ) : (
+                        <div className="w-10 h-10 rounded-full border border-white dark:border-slate-700 bg-primary/10 text-primary flex items-center justify-center font-semibold text-sm">
+                            {initials || 'U'}
+                        </div>
+                    )}
                     <div className="flex-1 overflow-hidden">
-                        <p className="text-sm font-semibold truncate text-slate-800 dark:text-slate-200">Alex Henderson</p>
-                        <p className="text-xs text-slate-500 truncate">Pro Accountant</p>
+                        <p className="text-sm font-semibold truncate text-slate-800 dark:text-slate-200">{displayName}</p>
+                        <p className="text-xs text-slate-500 truncate">{subtitle}</p>
                     </div>
                 </div>
             </div>

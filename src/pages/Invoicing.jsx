@@ -480,7 +480,7 @@ export default function Invoicing() {
                         <Printer className="w-4 h-4" />
                         <span className="hidden xs:inline">Print</span>
                     </button>
-                    <button onClick={() => toast('Invoice draft saved', 'success')} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
+                    <button onClick={handleSendInvoice} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
                         <Save className="w-4 h-4" />
                         <span className="hidden xs:inline">Save</span>
                     </button>
@@ -776,7 +776,7 @@ export default function Invoicing() {
 
                             {/* Template link */}
                             <div className="p-4 border-t border-slate-200 dark:border-slate-800 text-center">
-                                <button onClick={() => toast('Template editor coming soon', 'info')} className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 mx-auto">
+                                <button onClick={() => window.print()} className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 mx-auto">
                                     <Settings2 className="w-3.5 h-3.5" />
                                     Edit Template Design
                                 </button>
@@ -788,3 +788,5 @@ export default function Invoicing() {
         </div>
     );
 }
+
+

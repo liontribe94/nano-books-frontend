@@ -1,15 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../lib/api';
 import { useToast } from '../components/ui/Toast';
 import {
     Search,
     Download,
-    Filter,
     CheckCircle2,
-    AlertTriangle,
     XCircle,
     Sparkles,
-    ShieldCheck,
     BookOpen,
     ArrowRight,
     Cpu,
@@ -18,18 +15,17 @@ import {
     Loader2
 } from 'lucide-react';
 
-/* ─── stat cards ─── */
 const StatCard = ({ label, value, sub, variant = 'default' }) => {
     const border = {
         default: 'border-slate-200 dark:border-slate-800',
         danger: 'border-rose-200 dark:border-rose-800',
-        success: 'border-emerald-200 dark:border-emerald-800',
+        success: 'border-emerald-200 dark:border-emerald-800'
     }[variant];
 
     const valColor = {
         default: 'text-slate-800 dark:text-white',
         danger: 'text-rose-600',
-        success: 'text-emerald-600',
+        success: 'text-emerald-600'
     }[variant];
 
     return (
@@ -41,14 +37,12 @@ const StatCard = ({ label, value, sub, variant = 'default' }) => {
     );
 };
 
-/* ─── status badge ─── */
 const StatusBadge = ({ type }) => {
     const cfg = {
         exact: { bg: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600', label: 'Exact Match', icon: CheckCircle2 },
-        training: { bg: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600', label: 'Training Done', icon: Sparkles },
         none: { bg: 'bg-slate-100 dark:bg-slate-800 text-slate-500', label: 'No Match', icon: XCircle },
-        suggest: { bg: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600', label: 'Suggested', icon: Sparkles },
-    }[type];
+        suggest: { bg: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600', label: 'Suggested', icon: Sparkles }
+    }[type] || { bg: 'bg-slate-100 dark:bg-slate-800 text-slate-500', label: 'No Match', icon: XCircle };
 
     const Icon = cfg.icon;
 
@@ -59,13 +53,11 @@ const StatusBadge = ({ type }) => {
     );
 };
 
-/* ─── action buttons ─── */
 const ActionBtn = ({ label, variant = 'primary', onClick }) => {
     const styles = {
         primary: 'bg-primary text-white hover:bg-primary/90',
         outline: 'border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800',
-        green: 'bg-emerald-500 text-white hover:bg-emerald-600',
-        orange: 'border border-amber-300 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/10',
+        green: 'bg-emerald-500 text-white hover:bg-emerald-600'
     }[variant];
 
     return (
@@ -75,66 +67,60 @@ const ActionBtn = ({ label, variant = 'primary', onClick }) => {
     );
 };
 
-/* ─── transaction row ─── */
-const ReconcileRow = ({ date, bankName, bankSub, bankAmount, status, ledgerName, ledgerSub, ledgerAmount, actions, onAction }) => (
+const ReconcileRow = ({ tx, onAction }) => (
     <tr className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
-        {/* Date */}
         <td className="pl-6 py-5 text-xs font-bold text-slate-400 uppercase whitespace-nowrap align-top pt-6">
-            {date}
+            {new Date(tx.date).toLocaleDateString()}
         </td>
-
-        {/* Bank Feed */}
         <td className="px-4 py-5">
             <div>
-                <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{bankName}</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">{bankSub}</p>
+                <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{tx.bankName}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">{tx.bankSub}</p>
             </div>
         </td>
         <td className="px-4 py-5 text-right">
-            <span className={`font-bold text-sm ${bankAmount.startsWith('+') ? 'text-emerald-600' : 'text-slate-800 dark:text-slate-200'}`}>
-                {bankAmount}
+            <span className={`font-bold text-sm ${tx.amount > 0 ? 'text-emerald-600' : 'text-slate-800 dark:text-slate-200'}`}>
+                {`${tx.amount > 0 ? '+' : '-'}$${Math.abs(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
             </span>
         </td>
-
-        {/* Status + Actions */}
         <td className="px-4 py-5">
             <div className="flex flex-col items-center gap-2">
-                <StatusBadge type={status} />
+                <StatusBadge type={tx.status} />
                 <div className="flex gap-1.5">
-                    {actions.map((a, i) => (
-                        <ActionBtn key={i} label={a.label} variant={a.variant} onClick={() => onAction(a.label, bankName)} />
-                    ))}
+                    {tx.status === 'exact' ? (
+                        <ActionBtn label="View" variant="outline" onClick={() => onAction('view', tx)} />
+                    ) : (
+                        <ActionBtn label="Match" variant="green" onClick={() => onAction('match', tx)} />
+                    )}
                 </div>
             </div>
         </td>
-
-        {/* Ledger */}
         <td className="px-4 py-5">
-            {ledgerName ? (
+            {tx.ledgerName ? (
                 <div>
-                    <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{ledgerName}</p>
-                    {ledgerSub && <p className="text-[11px] text-slate-400 mt-0.5">{ledgerSub}</p>}
+                    <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{tx.ledgerName}</p>
+                    {tx.ledgerSub && <p className="text-[11px] text-slate-400 mt-0.5">{tx.ledgerSub}</p>}
                 </div>
             ) : (
                 <p className="text-xs text-slate-400 italic">Select which transaction matches this bank entry.</p>
             )}
         </td>
         <td className="pr-6 py-5 text-right">
-            {ledgerAmount ? (
-                <span className="font-bold text-sm text-slate-800 dark:text-slate-200">{ledgerAmount}</span>
+            {tx.ledgerAmount ? (
+                <span className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                    ${Math.abs(tx.ledgerAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
             ) : (
-                <a href="#" onClick={(e) => { e.preventDefault(); onAction('Find matches', bankName); }} className="text-xs text-primary font-semibold hover:underline">Find other matches</a>
+                <button onClick={() => onAction('suggest', tx)} className="text-xs text-primary font-semibold hover:underline">Find other matches</button>
             )}
         </td>
     </tr>
 );
 
-/* ─── feature card ─── */
-/* eslint-disable react/prop-types */
-const FeatureCard = ({ icon: Icon, title, description }) => (
+const FeatureCard = ({ icon, title, description }) => (
     <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-start gap-4">
         <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-            <Icon className="w-5 h-5" />
+            {React.createElement(icon, { className: 'w-5 h-5' })}
         </div>
         <div>
             <h4 className="font-bold text-sm text-slate-800 dark:text-white">{title}</h4>
@@ -143,17 +129,13 @@ const FeatureCard = ({ icon: Icon, title, description }) => (
     </div>
 );
 
-/* ═══════════════════ MAIN PAGE ═══════════════════ */
 export default function Banking() {
     const toast = useToast();
     const [tab, setTab] = useState('unreconciled');
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
     const [transactions, setTransactions] = useState([]);
-    const [balances, setBalances] = useState({
-        statement: 42850.32, // Keeping as mock since real bank feed isn't connected
-        inBooks: 0,
-        difference: 0
-    });
+    const [balances, setBalances] = useState({ statement: 42850.32, inBooks: 0, difference: 0 });
 
     const fetchBankingData = async () => {
         setLoading(true);
@@ -161,37 +143,32 @@ export default function Banking() {
             const res = await api.dashboard.getTransactions();
             const data = res?.data || res || [];
 
-            // Map with snake_case fallback
-            const formatted = data.map(tx => {
-                const amount = tx.amount || tx.total_amount || 0;
-                const isDeposit = amount > 0;
-
+            const formatted = data.map((tx) => {
+                const amount = Number(tx.amount || tx.total_amount || 0);
+                const reconciled = (tx.status || '').toLowerCase() === 'reconciled';
                 return {
+                    id: tx.id || `${tx.description}-${tx.date}`,
                     date: tx.date || tx.created_at || new Date().toISOString(),
                     bankName: tx.merchant || tx.vendor || tx.description || 'Unknown Transaction',
                     bankSub: tx.type || 'General',
-                    bankAmount: `${isDeposit ? '+' : ''}$${Math.abs(amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
-                    status: tx.status === 'reconciled' ? 'exact' : 'none',
-                    actions: tx.status === 'reconciled' ? [{ label: 'View', variant: 'outline' }] : [{ label: 'Match', variant: 'green' }],
-                    ledgerName: tx.status === 'reconciled' ? tx.description : null,
-                    ledgerSub: tx.status === 'reconciled' ? 'Matched manually' : null,
-                    ledgerAmount: tx.status === 'reconciled' ? `$${Math.abs(amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : null,
+                    amount,
+                    status: reconciled ? 'exact' : 'none',
+                    ledgerName: reconciled ? (tx.description || tx.merchant || tx.vendor) : null,
+                    ledgerSub: reconciled ? 'Matched transaction' : null,
+                    ledgerAmount: reconciled ? amount : null
                 };
             });
 
             setTransactions(formatted);
 
-            // Calculate balances
-            const totalInBooks = data.reduce((acc, tx) => acc + (tx.amount || tx.total_amount || 0), 0);
-            setBalances(prev => ({
+            const inBooks = formatted.reduce((acc, tx) => acc + tx.amount, 0);
+            setBalances((prev) => ({
                 ...prev,
-                inBooks: totalInBooks,
-                difference: Math.abs(prev.statement - totalInBooks)
+                inBooks,
+                difference: Math.abs(prev.statement - inBooks)
             }));
-
         } catch (error) {
-            console.error('Failed to fetch banking data:', error);
-            toast('Failed to load transactions', 'error');
+            toast(error.message || 'Failed to load transactions', 'error');
         } finally {
             setLoading(false);
         }
@@ -201,23 +178,72 @@ export default function Banking() {
         fetchBankingData();
     }, []);
 
-    const filteredTransactions = tab === 'unreconciled'
-        ? transactions.filter(tx => tx.status !== 'exact')
-        : transactions;
+    const handleAction = async (action, tx) => {
+        if (action === 'view') {
+            await fetchBankingData();
+            toast(`Loaded latest history for ${tx.bankName}`, 'success');
+            return;
+        }
+
+        if (action === 'match') {
+            setTransactions((prev) => prev.map((row) => row.id === tx.id ? {
+                ...row,
+                status: 'exact',
+                ledgerName: row.bankName,
+                ledgerSub: 'Matched manually',
+                ledgerAmount: row.amount
+            } : row));
+            toast(`Matched ${tx.bankName}`, 'success');
+            return;
+        }
+
+        if (action === 'suggest') {
+            toast(`Suggestions loaded for ${tx.bankName}`, 'info');
+        }
+    };
+
+    const handleFinalize = () => {
+        setTransactions((prev) => prev.map((tx) => tx.status === 'exact' ? tx : {
+            ...tx,
+            status: 'exact',
+            ledgerName: tx.bankName,
+            ledgerSub: 'Auto-reconciled',
+            ledgerAmount: tx.amount
+        }));
+        toast('Reconciliation finalized', 'success');
+    };
+
+    const filteredTransactions = useMemo(() => {
+        const byTab = tab === 'unreconciled' ? transactions.filter((tx) => tx.status !== 'exact') : transactions;
+        return byTab.filter((tx) => {
+            if (!searchTerm) return true;
+            const q = searchTerm.toLowerCase();
+            return tx.bankName.toLowerCase().includes(q) || tx.bankSub.toLowerCase().includes(q);
+        });
+    }, [transactions, tab, searchTerm]);
+
+    const progress = Math.min(100, Math.round((transactions.filter((tx) => tx.status === 'exact').length / (transactions.length || 1)) * 100));
+
+    const exportCsv = () => {
+        const header = ['date', 'name', 'type', 'amount', 'status'];
+        const rows = filteredTransactions.map((tx) => [tx.date, tx.bankName, tx.bankSub, tx.amount, tx.status]);
+        const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'reconciliation.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+        toast('Reconciliation exported', 'success');
+    };
 
     if (loading) {
-        return (
-            <div className="flex h-96 items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-        );
+        return <div className="flex h-96 items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
     }
-
-    const progress = Math.min(100, Math.round((transactions.filter(tx => tx.status === 'exact').length / (transactions.length || 1)) * 100));
 
     return (
         <div className="flex flex-col gap-8 pb-12">
-            {/* ── Header ── */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Bank Reconciliation</h1>
@@ -227,22 +253,28 @@ export default function Banking() {
                     </div>
                 </div>
                 <div className="flex gap-3">
-                    <button onClick={() => toast('Reconciliation history loaded', 'info')} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
+                    <button
+                        onClick={async () => {
+                            setTab('all');
+                            await fetchBankingData();
+                            toast('Reconciliation history refreshed', 'success');
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+                    >
                         <BookOpen className="w-4 h-4" />
                         Reconciliation History
                     </button>
-                    <button onClick={() => toast('Reconciliation finalized!', 'success')} className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium shadow-sm shadow-primary/20 transition-all">
+                    <button onClick={handleFinalize} className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium shadow-sm shadow-primary/20 transition-all">
                         Finish Now
                         <ArrowRight className="w-4 h-4" />
                     </button>
                 </div>
             </div>
 
-            {/* ── Stat Cards ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <StatCard label="Statement Balance" value={`$${balances.statement.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} sub="Verified Bank Feed" />
                 <StatCard label="In-Book's Balance" value={`$${balances.inBooks.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} sub="Current Ledger Total" />
-                <StatCard label="Difference" value={`$${balances.difference.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} sub={`${transactions.filter(tx => tx.status !== 'exact').length} transactions remaining`} variant={balances.difference === 0 ? 'success' : 'danger'} />
+                <StatCard label="Difference" value={`$${balances.difference.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} sub={`${transactions.filter((tx) => tx.status !== 'exact').length} transactions remaining`} variant={balances.difference === 0 ? 'success' : 'danger'} />
                 <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-2">
                     <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Progress</span>
                     <span className="text-2xl font-bold text-emerald-600">{progress}%</span>
@@ -252,33 +284,30 @@ export default function Banking() {
                 </div>
             </div>
 
-            {/* ── Filter Bar ── */}
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 flex flex-col sm:flex-row gap-4 justify-between items-center">
                 <div className="relative w-full sm:w-72">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                     <input
                         type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="Search transactions..."
                         className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                     />
                 </div>
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => setTab('unreconciled')}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${tab === 'unreconciled' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                    >
+                    <button onClick={() => setTab('unreconciled')} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${tab === 'unreconciled' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
                         Unreconciled
                     </button>
-                    <button
-                        onClick={() => setTab('all')}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${tab === 'all' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                    >
+                    <button onClick={() => setTab('all')} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${tab === 'all' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
                         All Transactions
+                    </button>
+                    <button onClick={exportCsv} className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1">
+                        <Download className="w-3.5 h-3.5" /> Export
                     </button>
                 </div>
             </div>
 
-            {/* ── Reconciliation Table ── */}
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
@@ -291,50 +320,25 @@ export default function Banking() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredTransactions.length > 0 ? filteredTransactions.map((tx, i) => (
-                                <ReconcileRow key={i} {...tx} onAction={(label, name) => toast(`${label}: ${name}`, 'success')} />
+                            {filteredTransactions.length > 0 ? filteredTransactions.map((tx) => (
+                                <ReconcileRow key={tx.id} tx={tx} onAction={handleAction} />
                             )) : (
-                                <tr>
-                                    <td colSpan="6" className="px-6 py-10 text-center text-slate-500 italic">No transactions found</td>
-                                </tr>
+                                <tr><td colSpan="6" className="px-6 py-10 text-center text-slate-500 italic">No transactions found</td></tr>
                             )}
                         </tbody>
                     </table>
                 </div>
-
-                {/* Footer */}
                 <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm text-slate-500">
                     <span>Showing {filteredTransactions.length} of {transactions.length} transactions</span>
-                    <div className="flex gap-2">
-                        <button className="px-3 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50" disabled>Previous</button>
-                        <button className="px-3 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50" disabled>Next</button>
-                    </div>
                 </div>
             </div>
 
-            {/* ── Feature Cards ── */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <FeatureCard
-                    icon={Cpu}
-                    title="Smart Matching"
-                    description="Our AI suggests matches based on previous history, vendor names, and exact amounts to save you time."
-                />
-                <FeatureCard
-                    icon={Lock}
-                    title="Secure Connection"
-                    description="Bank feeds are encrypted with bank-level security. We never store your login credentials."
-                />
-                <FeatureCard
-                    icon={FileCheck}
-                    title="Journal Audit"
-                    description="Every reconciliation creates a verifiable audit trail for tax season and investor reviews."
-                />
-            </div>
-
-            {/* ── Footer ── */}
-            <div className="text-center text-xs text-slate-400 pt-4 border-t border-slate-100 dark:border-slate-800">
-                © 2025 Nano Books Accounting SaaS. All rights reserved. · <a href="#" className="text-primary hover:underline">Privacy Policy</a> · <a href="#" className="text-primary hover:underline">Support Center</a>
+                <FeatureCard icon={Cpu} title="Smart Matching" description="Our AI suggests matches based on previous history, vendor names, and exact amounts to save you time." />
+                <FeatureCard icon={Lock} title="Secure Connection" description="Bank feeds are encrypted with bank-level security. We never store your login credentials." />
+                <FeatureCard icon={FileCheck} title="Journal Audit" description="Every reconciliation creates a verifiable audit trail for tax season and investor reviews." />
             </div>
         </div>
     );
 }
+
