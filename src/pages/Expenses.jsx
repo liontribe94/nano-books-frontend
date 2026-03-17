@@ -18,7 +18,7 @@ import {
     RefreshCw
 } from 'lucide-react';
 
-const ExpenseRow = ({ id, merchant, category, amount, date, status, onAction, onDelete }) => {
+const ExpenseRow = ({ id, merchant, category, amount, date, status, onAction, onDelete, actionLoadingId, deletingId }) => {
     const categoryStyles = {
         Software: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600',
         Meals: 'bg-orange-50 dark:bg-orange-500/10 text-orange-600',
@@ -56,11 +56,11 @@ const ExpenseRow = ({ id, merchant, category, amount, date, status, onAction, on
             </td>
             <td className="px-6 py-4 text-center">
                 <div className="flex items-center justify-center gap-2 text-slate-400">
-                    <button onClick={() => onAction(id)} className="hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-                        <MoreHorizontal className="w-5 h-5" />
+                    <button onClick={() => onAction(id)} disabled={actionLoadingId === id} className="hover:text-slate-600 dark:hover:text-slate-200 transition-colors disabled:opacity-60">
+                        {actionLoadingId === id ? <Loader2 className="w-5 h-5 animate-spin" /> : <MoreHorizontal className="w-5 h-5" />}
                     </button>
-                    <button onClick={() => onDelete(id)} className="hover:text-rose-500 transition-colors">
-                        <Trash2 className="w-4 h-4" />
+                    <button onClick={() => onDelete(id)} disabled={deletingId === id} className="hover:text-rose-500 transition-colors disabled:opacity-60">
+                        {deletingId === id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                     </button>
                 </div>
             </td>
@@ -75,8 +75,12 @@ export default function Expenses() {
     const [loading, setLoading] = React.useState(true);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
+    const [refreshing, setRefreshing] = React.useState(false);
+    const [actionLoadingId, setActionLoadingId] = React.useState(null);
+    const [deletingId, setDeletingId] = React.useState(null);
 
     const fetchExpenses = async () => {
+        if (!loading) setRefreshing(true);
         setLoading(true);
         try {
             const res = await api.expenses.getAll();
@@ -97,6 +101,7 @@ export default function Expenses() {
             setExpenses([]);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
@@ -116,6 +121,7 @@ export default function Expenses() {
 
     const handleDelete = async (id) => {
         if (!window.confirm('Are you sure you want to delete this expense?')) return;
+        setDeletingId(id);
         try {
             await api.expenses.delete(id);
             toast('Expense deleted successfully', 'success');
@@ -126,6 +132,7 @@ export default function Expenses() {
     };
 
     const handleViewExpense = async (id) => {
+        setActionLoadingId(id);
         try {
             const res = await api.expenses.getOne(id);
             const exp = res?.data || res;
@@ -223,8 +230,8 @@ export default function Expenses() {
                                 <Filter className="w-4 h-4" />
                                 Filter: {statusFilter}
                             </button>
-                            <button onClick={fetchExpenses} className="flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                <RefreshCw className="w-4 h-4" />
+                            <button onClick={fetchExpenses} disabled={refreshing} className="flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-60">
+                                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                                 Refresh
                             </button>
                         </div>
@@ -255,6 +262,10 @@ export default function Expenses() {
                                                 {...expense}
                                                 onAction={handleViewExpense}
                                                 onDelete={handleDelete}
+                                                actionLoadingId={actionLoadingId}
+                                                deletingId={deletingId}
+                                                actionLoadingId={actionLoadingId}
+                                                deletingId={deletingId}
                                             />
                                         ))
                                     ) : (
@@ -271,3 +282,7 @@ export default function Expenses() {
         </div>
     );
 }
+
+
+
+

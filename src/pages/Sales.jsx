@@ -30,7 +30,7 @@ const statusIcons = {
     draft: FileText
 };
 
-const InvoiceRow = ({ invoice, onAction }) => {
+const InvoiceRow = ({ invoice, onAction, actionLoadingId }) => {
     const StatusIcon = statusIcons[invoice.status] || Clock;
 
     return (
@@ -57,8 +57,8 @@ const InvoiceRow = ({ invoice, onAction }) => {
                 </div>
             </td>
             <td className="px-6 py-4 text-center">
-                <button onClick={() => onAction(invoice)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-                    <MoreHorizontal className="w-5 h-5" />
+                <button onClick={() => onAction(invoice)} disabled={actionLoadingId === invoice.backendId} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors disabled:opacity-60">
+                    {actionLoadingId === invoice.backendId ? <Loader2 className="w-5 h-5 animate-spin" /> : <MoreHorizontal className="w-5 h-5" />}
                 </button>
             </td>
         </tr>
@@ -73,6 +73,7 @@ export default function Sales() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [stats, setStats] = useState({ totalRevenue: 0, pendingAmount: 0, overdueAmount: 0 });
+    const [actionLoadingId, setActionLoadingId] = useState(null);
 
     const fetchInvoices = async () => {
         setLoading(true);
@@ -119,6 +120,7 @@ export default function Sales() {
             setInvoices([]);
         } finally {
             setLoading(false);
+
         }
     };
 
@@ -143,7 +145,15 @@ export default function Sales() {
             return;
         }
 
-        try {
+        const actionLabel = invoice.status === 'draft'
+            ? 'send this draft invoice'
+            : invoice.status === 'Pending' || invoice.status === 'Overdue'
+                ? 'mark this invoice as paid'
+                : 'refresh this invoice';
+        if (!window.confirm(`Are you sure you want to ${actionLabel}?`)) return;
+
+        setActionLoadingId(invoice.backendId);
+try {
             if (invoice.status === 'draft') {
                 await api.invoices.send(invoice.backendId);
                 toast(`Invoice #${invoice.displayId} sent`, 'success');
@@ -259,7 +269,7 @@ export default function Sales() {
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {filteredInvoices.map((invoice) => (
-                                <InvoiceRow key={invoice.backendId || invoice.displayId} invoice={invoice} onAction={handleQuickAction} />
+                                <InvoiceRow key={invoice.backendId || invoice.displayId} invoice={invoice} onAction={handleQuickAction} actionLoadingId={actionLoadingId} />
                             ))}
                             {filteredInvoices.length === 0 && (
                                 <tr>
@@ -277,3 +287,9 @@ export default function Sales() {
         </div>
     );
 }
+
+
+
+
+
+

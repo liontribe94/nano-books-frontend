@@ -56,6 +56,8 @@ export default function PayrollDashboard() {
   }, []);
 
   const runPayroll = async () => {
+    if (!window.confirm('Run payroll for the current cycle now?')) return;
+
     setRunning(true);
     try {
       const cycleId = currentCycle?.id;
@@ -70,9 +72,7 @@ export default function PayrollDashboard() {
     }
   };
 
-  const ytdSpending = useMemo(() => {
-    return history.reduce((acc, item) => acc + Number(item.total || item.totalAmount || item.amount || 0), 0);
-  }, [history]);
+  const ytdSpending = useMemo(() => history.reduce((acc, item) => acc + Number(item.total || item.totalAmount || item.amount || 0), 0), [history]);
 
   if (loading) {
     return (
@@ -90,11 +90,8 @@ export default function PayrollDashboard() {
           <p className="text-sm text-slate-500">Manage employee compensation and tax filings.</p>
         </div>
 
-        <button
-          onClick={runPayroll}
-          disabled={running}
-          className="bg-blue-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-60"
-        >
+        <button onClick={runPayroll} disabled={running} className="bg-blue-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2">
+          {running ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
           {running ? 'Running...' : 'Run Payroll'}
         </button>
       </div>
@@ -145,7 +142,8 @@ export default function PayrollDashboard() {
               </ul>
             </div>
 
-            <button onClick={runPayroll} disabled={running} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm disabled:opacity-60">
+            <button onClick={runPayroll} disabled={running} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm disabled:opacity-60 flex items-center gap-2">
+              {running ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               {running ? 'Running...' : 'Review and Run'}
             </button>
           </div>
@@ -153,24 +151,13 @@ export default function PayrollDashboard() {
 
         <div className="space-y-4">
           <button onClick={() => navigate('/employees')} className="w-full bg-white border rounded-xl p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50">
-            <div className="flex items-center gap-3">
-              <Plus className="w-5 h-5 text-blue-600" />
-              <span className="text-sm font-medium">Add Employee</span>
-            </div>
+            <div className="flex items-center gap-3"><Plus className="w-5 h-5 text-blue-600" /><span className="text-sm font-medium">Add Employee</span></div>
           </button>
-
           <button onClick={() => navigate('/settings')} className="w-full bg-white border rounded-xl p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50">
-            <div className="flex items-center gap-3">
-              <Settings className="w-5 h-5 text-blue-600" />
-              <span className="text-sm font-medium">Payroll Settings</span>
-            </div>
+            <div className="flex items-center gap-3"><Settings className="w-5 h-5 text-blue-600" /><span className="text-sm font-medium">Payroll Settings</span></div>
           </button>
-
           <button onClick={() => navigate('/reports')} className="w-full bg-white border rounded-xl p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50">
-            <div className="flex items-center gap-3">
-              <FileText className="w-5 h-5 text-blue-600" />
-              <span className="text-sm font-medium">Tax Forms</span>
-            </div>
+            <div className="flex items-center gap-3"><FileText className="w-5 h-5 text-blue-600" /><span className="text-sm font-medium">Tax Forms</span></div>
           </button>
         </div>
       </div>
@@ -195,11 +182,7 @@ export default function PayrollDashboard() {
             <tbody className="border-t">
               {history.slice(0, 5).map((item, index) => {
                 const status = (item.status || 'processed').toLowerCase();
-                const statusClass = status === 'paid'
-                  ? 'text-green-600 bg-green-100'
-                  : status === 'processed'
-                    ? 'text-blue-600 bg-blue-100'
-                    : 'text-amber-600 bg-amber-100';
+                const statusClass = status === 'paid' ? 'text-green-600 bg-green-100' : status === 'processed' ? 'text-blue-600 bg-blue-100' : 'text-amber-600 bg-amber-100';
 
                 return (
                   <tr key={item.id || index} className="border-b">
@@ -207,19 +190,11 @@ export default function PayrollDashboard() {
                     <td>{item.employeesCount || item.employeeCount || '-'}</td>
                     <td>{currency(item.total || item.totalAmount || item.amount)}</td>
                     <td>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '-'}</td>
-                    <td>
-                      <span className={`text-xs px-2 py-1 rounded ${statusClass}`}>
-                        {status}
-                      </span>
-                    </td>
+                    <td><span className={`text-xs px-2 py-1 rounded ${statusClass}`}>{status}</span></td>
                   </tr>
                 );
               })}
-              {history.length === 0 && (
-                <tr>
-                  <td colSpan="5" className="py-8 text-center text-slate-500">No payroll history found.</td>
-                </tr>
-              )}
+              {history.length === 0 && (<tr><td colSpan="5" className="py-8 text-center text-slate-500">No payroll history found.</td></tr>)}
             </tbody>
           </table>
         </div>

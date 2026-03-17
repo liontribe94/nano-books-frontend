@@ -31,6 +31,7 @@ export default function EmployeesDashboard() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
+  const [busyAction, setBusyAction] = useState('');
 
   const pageSize = 10;
 
@@ -84,12 +85,15 @@ export default function EmployeesDashboard() {
     const role = window.prompt('Role (e.g. Accountant)', 'Accountant') || 'Accountant';
     const department = window.prompt('Department', 'Finance') || 'Finance';
 
+    setBusyAction('add');
     try {
       await api.employees.create({ name, email, role, department });
       toast('Employee created successfully', 'success');
       fetchEmployees();
     } catch (error) {
       toast(error.message || 'Failed to create employee', 'error');
+    } finally {
+      setBusyAction('');
     }
   };
 
@@ -97,17 +101,22 @@ export default function EmployeesDashboard() {
     const role = window.prompt('Update role', employee.role);
     if (!role) return;
     const department = window.prompt('Update department', employee.department) || employee.department;
+    if (!window.confirm(`Update ${employee.name}'s profile details?`)) return;
 
+    setBusyAction(`edit-${employee.id}`);
     try {
       await api.employees.update(employee.id, { role, department });
       toast('Employee updated', 'success');
       fetchEmployees();
     } catch (error) {
       toast(error.message || 'Failed to update employee', 'error');
+    } finally {
+      setBusyAction('');
     }
   };
 
   const handleExport = () => {
+    setBusyAction('export');
     const header = ['name', 'email', 'role', 'department', 'status'];
     const rows = filteredEmployees.map((e) => [e.name, e.email, e.role, e.department, e.status]);
     const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -120,6 +129,7 @@ export default function EmployeesDashboard() {
     a.click();
     URL.revokeObjectURL(url);
     toast('Employees exported', 'success');
+    setBusyAction('');
   };
 
   if (loading) {
@@ -138,8 +148,12 @@ export default function EmployeesDashboard() {
           <p className="text-sm text-slate-500">Manage your workforce and organizational hierarchy.</p>
         </div>
 
-        <button onClick={handleAddEmployee} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700">
-          <Plus className="w-4 h-4" />
+        <button
+          onClick={handleAddEmployee}
+          disabled={busyAction === 'add'}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 disabled:opacity-60"
+        >
+          {busyAction === 'add' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           Add Employee
         </button>
       </div>
@@ -185,8 +199,12 @@ export default function EmployeesDashboard() {
               {statusFilter === 'active' ? 'Clear Filter' : 'Active Only'}
             </button>
 
-            <button onClick={handleExport} className="flex items-center gap-1 text-sm border px-3 py-1 rounded-lg hover:bg-gray-50">
-              <Download className="w-4 h-4" />
+            <button
+              onClick={handleExport}
+              disabled={busyAction === 'export'}
+              className="flex items-center gap-1 text-sm border px-3 py-1 rounded-lg hover:bg-gray-50 disabled:opacity-60"
+            >
+              {busyAction === 'export' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               Export
             </button>
           </div>
@@ -227,8 +245,12 @@ export default function EmployeesDashboard() {
                   <button onClick={() => navigate(`/employees/${emp.id}`)}>
                     <Eye className="w-4 h-4 cursor-pointer text-slate-500 hover:text-slate-800" />
                   </button>
-                  <button onClick={() => handleEditEmployee(emp)}>
-                    <Pencil className="w-4 h-4 cursor-pointer text-slate-500 hover:text-slate-800" />
+                  <button onClick={() => handleEditEmployee(emp)} disabled={busyAction === `edit-${emp.id}`}>
+                    {busyAction === `edit-${emp.id}` ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+                    ) : (
+                      <Pencil className="w-4 h-4 cursor-pointer text-slate-500 hover:text-slate-800" />
+                    )}
                   </button>
                 </td>
               </tr>
