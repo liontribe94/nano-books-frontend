@@ -32,6 +32,7 @@ export const api = {
     // Organization / Team
     organization: {
         get: () => apiRequest('/organization'),
+        upsert: (data) => apiRequest('/organization', { method: 'POST', body: JSON.stringify(data) }),
         team: {
             getMembers: () => apiRequest('/organization/team'),
             updateRole: (userId, role) => apiRequest(`/organization/team/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),

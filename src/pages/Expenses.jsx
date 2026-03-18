@@ -264,8 +264,6 @@ export default function Expenses() {
                                                 onDelete={handleDelete}
                                                 actionLoadingId={actionLoadingId}
                                                 deletingId={deletingId}
-                                                actionLoadingId={actionLoadingId}
-                                                deletingId={deletingId}
                                             />
                                         ))
                                     ) : (

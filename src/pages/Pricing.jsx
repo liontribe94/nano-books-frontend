@@ -5,7 +5,7 @@ import { Check, X, ArrowLeft } from 'lucide-react';
 const tiers = [
     {
         name: 'Starter',
-        price: { monthly: 0, yearly: 0 },
+        price: { monthly: 7000, yearly: 70000 },
         description: 'Perfect for freelancers and small tasks.',
         features: [
             'Up to 5 Clients',
@@ -19,12 +19,12 @@ const tiers = [
             'Advanced Reports',
             'Priority Support'
         ],
-        cta: 'Get Started Free',
+        cta: 'Get Started',
         popular: false
     },
     {
         name: 'Pro',
-        price: { monthly: 29, yearly: 290 },
+        price: { monthly: 19000, yearly: 190000 },
         description: 'Best for growing businesses needing full power.',
         features: [
             'Unlimited Clients',
@@ -43,7 +43,7 @@ const tiers = [
     },
     {
         name: 'Enterprise',
-        price: { monthly: 99, yearly: 990 },
+        price: { monthly: 49000, yearly: 490000 },
         description: 'For large teams and complex needs.',
         features: [
             'Unlimited Everything',
@@ -121,7 +121,7 @@ export default function Pricing() {
 
                             <div className="mb-8">
                                 <span className="text-4xl font-extrabold text-slate-900 dark:text-white">
-                                    ${annual ? tier.price.yearly : tier.price.monthly}
+                                    ₦{(annual ? tier.price.yearly : tier.price.monthly).toLocaleString()}
                                 </span>
                                 <span className="text-slate-500 dark:text-slate-400">/{annual ? 'year' : 'month'}</span>
                             </div>
