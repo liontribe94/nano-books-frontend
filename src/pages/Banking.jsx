@@ -135,13 +135,30 @@ export default function Banking() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [transactions, setTransactions] = useState([]);
-    const [balances, setBalances] = useState({ statement: 42850.32, inBooks: 0, difference: 0 });
+    const [accounts, setAccounts] = useState([]);
+    const [isConnecting, setIsConnecting] = useState(false);
+    const [balances, setBalances] = useState({ statement: 0, inBooks: 0, difference: 0 });
+
+    useEffect(() => {
+        const script = document.createElement('script');
+        script.src = 'https://connect.withmono.com/connect.js';
+        script.async = true;
+        document.body.appendChild(script);
+        return () => document.body.removeChild(script);
+    }, []);
 
     const fetchBankingData = async () => {
         setLoading(true);
         try {
-            const res = await api.dashboard.getTransactions();
-            const data = res?.data || res || [];
+            const [accRes, txRes] = await Promise.all([
+                api.banking.getAccounts().catch(() => ({ data: [] })),
+                api.banking.getTransactions().catch(() => ({ data: [] }))
+            ]);
+
+            const connectedAccounts = accRes.data || [];
+            setAccounts(connectedAccounts);
+
+            const data = txRes.data || [];
 
             const formatted = data.map((tx) => {
                 const amount = Number(tx.amount || tx.total_amount || 0);
@@ -162,10 +179,15 @@ export default function Banking() {
             setTransactions(formatted);
 
             const inBooks = formatted.reduce((acc, tx) => acc + tx.amount, 0);
+
+            // Calculate real statement balance from Mono accounts
+            const statementBal = connectedAccounts.reduce((acc, a) => acc + (a.balance || 0), 0);
+
             setBalances((prev) => ({
                 ...prev,
+                statement: statementBal,
                 inBooks,
-                difference: Math.abs(prev.statement - inBooks)
+                difference: Math.abs(statementBal - inBooks)
             }));
         } catch (error) {
             toast(error.message || 'Failed to load transactions', 'error');
@@ -177,6 +199,33 @@ export default function Banking() {
     useEffect(() => {
         fetchBankingData();
     }, []);
+
+    const handleConnectMono = () => {
+        if (!window.Connect) {
+            toast('Mono Connect script is loading. Please wait a moment.', 'error');
+            return;
+        }
+
+        const monoConnect = new window.Connect({
+            key: import.meta.env.VITE_MONO_PUBLIC_KEY || 'test_pk_dummy',
+            onSuccess: async ({ code }) => {
+                setIsConnecting(true);
+                try {
+                    await api.banking.exchangeCode(code);
+                    toast('Bank account linked successfully!', 'success');
+                    await fetchBankingData();
+                } catch (error) {
+                    toast(error.message || 'Failed to link account', 'error');
+                } finally {
+                    setIsConnecting(false);
+                }
+            },
+            onClose: () => console.log('Widget closed')
+        });
+
+        monoConnect.setup();
+        monoConnect.open();
+    };
 
     const handleAction = async (action, tx) => {
         if (action === 'view') {
@@ -248,11 +297,29 @@ export default function Banking() {
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Bank Reconciliation</h1>
                     <div className="flex items-center gap-2 mt-1">
-                        <span className="text-sm text-slate-500 dark:text-slate-400">Connected Account</span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 text-[10px] font-bold uppercase">Connected</span>
+                        <span className="text-sm text-slate-500 dark:text-slate-400">Connected Accounts:</span>
+                        {accounts.length > 0 ? (
+                            <div className="flex gap-2">
+                                {accounts.map(acc => (
+                                    <span key={acc.id} className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 text-[10px] font-bold uppercase" title={acc.account_number}>
+                                        {acc.bank_name}
+                                    </span>
+                                ))}
+                            </div>
+                        ) : (
+                            <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-bold uppercase">Not Connected</span>
+                        )}
                     </div>
                 </div>
                 <div className="flex gap-3">
+                    <button
+                        onClick={handleConnectMono}
+                        disabled={isConnecting}
+                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+                    >
+                        {isConnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
+                        {isConnecting ? 'Connecting...' : 'Connect Bank'}
+                    </button>
                     <button
                         onClick={async () => {
                             setTab('all');

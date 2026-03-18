@@ -110,6 +110,13 @@ export const api = {
         update: (data) => apiRequest('/settings', { method: 'PATCH', body: JSON.stringify(data) }),
     },
 
+    // Banking
+    banking: {
+        getAccounts: () => apiRequest('/banking/accounts'),
+        getTransactions: () => apiRequest('/banking/transactions'),
+        exchangeCode: (code) => apiRequest('/banking/mono-connect', { method: 'POST', body: JSON.stringify({ code }) })
+    },
+
     // Expenses
     expenses: {
         getAll: (params) => apiRequest('/expenses?' + new URLSearchParams(params || {})),
