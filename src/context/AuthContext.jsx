@@ -6,6 +6,18 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [currency, setCurrencyState] = useState(localStorage.getItem('app_currency') || 'USD');
+
+    const setCurrency = (curr) => {
+        setCurrencyState(curr);
+        localStorage.setItem('app_currency', curr);
+    };
+
+    const formatCurrency = (amount) => {
+        const symbolMap = { USD: '$', EUR: '€', GBP: '£', NGN: '₦' };
+        const sym = symbolMap[currency] || '$';
+        return `${sym}${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -46,7 +58,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, register, logout, loading, currency, setCurrency, formatCurrency }}>
             {!loading && children}
         </AuthContext.Provider>
     );

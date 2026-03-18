@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import {
     Plus,
@@ -211,7 +212,7 @@ const AddCustomerModal = ({ isOpen, onClose, onCustomerCreated, toast }) => {
 };
 
 /* ─── Line Item Row ─── */
-const LineItemRow = ({ item, onChange, onRemove, products }) => {
+const LineItemRow = ({ item, onChange, onRemove, products, formatCurrency }) => {
     const [search, setSearch] = useState(item.description || '');
     const [showProducts, setShowProducts] = useState(false);
 
@@ -261,7 +262,7 @@ const LineItemRow = ({ item, onChange, onRemove, products }) => {
                                         <p className="text-[10px] text-slate-400">{p.sku}</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-xs font-bold text-primary">${p.price.toFixed(2)}</p>
+                                        <p className="text-xs font-bold text-primary">{formatCurrency(p.price)}</p>
                                         <p className="text-[9px] text-slate-400">{p.quantity} in stock</p>
                                     </div>
                                 </button>
@@ -299,7 +300,7 @@ const LineItemRow = ({ item, onChange, onRemove, products }) => {
                 />
             </td>
             <td className="py-3 px-3 w-28 text-right relative z-10">
-                <span className="text-sm font-bold text-slate-800 dark:text-slate-200">${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{formatCurrency(item.amount)}</span>
             </td>
             <td className="py-3 pl-3 w-10 relative z-10">
                 <button onClick={onRemove} className="text-slate-300 hover:text-rose-500 transition-colors">
@@ -314,6 +315,7 @@ const LineItemRow = ({ item, onChange, onRemove, products }) => {
 export default function Invoicing() {
     const navigate = useNavigate();
     const toast = useToast();
+    const { currency, setCurrency, formatCurrency } = useAuth();
     const [step, setStep] = useState(0);
     const [showAddCustomer, setShowAddCustomer] = useState(false);
     const [customers, setCustomers] = useState([]);
@@ -425,7 +427,7 @@ export default function Invoicing() {
                 invoiceNumber: `INV-${Date.now().toString().slice(-4)}`,
                 issueDate: new Date().toISOString(),
                 dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-                currency: 'USD',
+                currency: currency,
                 items: validItems,
                 discount: 0,
                 notes: '',
@@ -561,10 +563,14 @@ export default function Invoicing() {
                             </div>
                             <div>
                                 <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">Currency</label>
-                                <select className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:border-primary">
-                                    <option>USD – United States Dollar</option>
-                                    <option>EUR – Euro</option>
-                                    <option>GBP – British Pound</option>
+                                <select
+                                    value={currency}
+                                    onChange={(e) => setCurrency(e.target.value)}
+                                    className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:border-primary">
+                                    <option value="USD">USD – United States Dollar</option>
+                                    <option value="EUR">EUR – Euro</option>
+                                    <option value="GBP">GBP – British Pound</option>
+                                    <option value="NGN">NGN – Nigerian Naira</option>
                                 </select>
                             </div>
                         </div>
@@ -614,6 +620,7 @@ export default function Invoicing() {
                                             products={inventoryProducts}
                                             onChange={(updated) => updateItem(idx, updated)}
                                             onRemove={() => removeItem(idx)}
+                                            formatCurrency={formatCurrency}
                                         />
                                     ))}
                                 </tbody>
@@ -641,19 +648,19 @@ export default function Invoicing() {
                             <div className="space-y-3">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-500">Subtotal</span>
-                                    <span className="font-medium text-slate-800 dark:text-slate-200">${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                    <span className="font-medium text-slate-800 dark:text-slate-200">{formatCurrency(subtotal)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-500">Tax (10%)</span>
-                                    <span className="font-medium text-slate-800 dark:text-slate-200">${taxAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                    <span className="font-medium text-slate-800 dark:text-slate-200">{formatCurrency(taxAmount)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-500">Discount</span>
-                                    <span className="font-medium text-rose-500">-${discount.toFixed(2)}</span>
+                                    <span className="font-medium text-rose-500">-{formatCurrency(discount)}</span>
                                 </div>
                                 <div className="border-t border-slate-200 dark:border-slate-700 pt-3 mt-3 flex justify-between">
                                     <span className="font-bold text-slate-800 dark:text-white">TOTAL DUE</span>
-                                    <span className="text-2xl font-bold text-slate-800 dark:text-white">${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                    <span className="text-2xl font-bold text-slate-800 dark:text-white">{formatCurrency(total)}</span>
                                 </div>
                             </div>
                         </div>
@@ -730,11 +737,11 @@ export default function Invoicing() {
                                     <div className="flex justify-between mb-6">
                                         <div>
                                             <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider mb-1">Bill To</p>
-                                            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">{customer.name}</p>
-                                            <p className="text-[10px] text-slate-400 leading-relaxed">Global Tech Solutions Inc.<br />401 Innovation Way, Suite<br />300<br />San Francisco, CA 94103</p>
+                                            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">{customer.name || 'Customer Name'}</p>
+                                            <p className="text-[10px] text-slate-400 leading-relaxed max-w-[150px] overflow-hidden whitespace-normal">{customer.address || customer.email || 'Address pending...'}</p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-xl font-bold text-primary">${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                                            <p className="text-xl font-bold text-primary">{formatCurrency(total)}</p>
                                         </div>
                                     </div>
 
@@ -745,11 +752,18 @@ export default function Invoicing() {
                                             <span className="w-10 text-center">Qty</span>
                                             <span className="w-16 text-right">Amount</span>
                                         </div>
-                                        <div className="flex items-start text-[11px] py-2 border-b border-dashed border-slate-100 dark:border-slate-700">
-                                            <span className="flex-1 text-slate-700 dark:text-slate-300 leading-snug">Cloud Infrastructure Maintenance</span>
-                                            <span className="w-10 text-center text-slate-500">1</span>
-                                            <span className="w-16 text-right font-semibold text-slate-800 dark:text-slate-200">$1,100.00</span>
-                                        </div>
+                                        {lineItems.filter(i => i.description || i.amount > 0).map((item, idx) => (
+                                            <div key={idx} className="flex items-start text-[11px] py-2 border-b border-dashed border-slate-100 dark:border-slate-700">
+                                                <span className="flex-1 text-slate-700 dark:text-slate-300 leading-snug break-words pr-2">{item.description || 'New Item'}</span>
+                                                <span className="w-10 text-center text-slate-500 shrink-0">{item.qty}</span>
+                                                <span className="w-16 text-right font-semibold text-slate-800 dark:text-slate-200 shrink-0">{formatCurrency(item.amount)}</span>
+                                            </div>
+                                        ))}
+                                        {lineItems.filter(i => i.description || i.amount > 0).length === 0 && (
+                                            <div className="flex items-start text-[11px] py-2 border-b border-dashed border-slate-100 dark:border-slate-700">
+                                                <span className="flex-1 text-slate-400 italic">No items added</span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Preview Totals */}
@@ -760,15 +774,15 @@ export default function Invoicing() {
                                         </div>
                                         <div className="flex justify-between text-slate-500">
                                             <span>Sub Total</span>
-                                            <span>$1,100.00</span>
+                                            <span>{formatCurrency(subtotal)}</span>
                                         </div>
                                         <div className="flex justify-between text-slate-500">
                                             <span>+Tax (10%)</span>
-                                            {/* <span>$120.00</span> */}
+                                            <span>{formatCurrency(taxAmount)}</span>
                                         </div>
                                         <div className="flex justify-between font-bold text-slate-800 dark:text-white pt-2 border-t border-slate-100 dark:border-slate-700 mt-2">
                                             <span>Grand Total</span>
-                                            <span className="text-primary">${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                            <span className="text-primary">{formatCurrency(total)}</span>
                                         </div>
                                     </div>
                                 </div>

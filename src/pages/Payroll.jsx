@@ -2,21 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui/Toast';
 import { api } from '../lib/api';
-import {
-  Calendar,
-  DollarSign,
-  Users,
-  FileText,
-  Plus,
-  Settings,
-  Loader2
-} from 'lucide-react';
+import { Loader2, Plus, Settings, FileText, Calendar, DollarSign, Users } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
-const currency = (n) => `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function PayrollDashboard() {
   const navigate = useNavigate();
   const toast = useToast();
+  const { formatCurrency: currency } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
