@@ -159,14 +159,14 @@ export default function HelpCenter() {
 
                         <div className="space-y-3">
                             <button
-                                onClick={() => window.open('mailto:support@nanobooks.com?subject=Live%20Chat%20Request','_blank')}
+                                onClick={() => window.open('mailto:support@nanobooks.com?subject=Live%20Chat%20Request', '_blank')}
                                 className="w-full flex items-center justify-center gap-3 py-3.5 bg-white text-primary rounded-xl font-bold hover:bg-slate-50 transition-all shadow-lg"
                             >
                                 <MessageCircle className="w-5 h-5" />
                                 Start Live Chat
                             </button>
                             <button
-                                onClick={() => window.open('mailto:support@nanobooks.com?subject=Support%20Request','_blank')}
+                                onClick={() => window.open('mailto:support@nanobooks.com?subject=Support%20Request', '_blank')}
                                 className="w-full flex items-center justify-center gap-3 py-3.5 bg-primary/20 border border-white/20 text-white rounded-xl font-bold hover:bg-white/10 transition-all"
                             >
                                 <Mail className="w-5 h-5" />
@@ -201,7 +201,7 @@ export default function HelpCenter() {
                             </div>
                         </div>
                         <button
-                            onClick={() => window.open('https://github.com','_blank')}
+                            onClick={() => window.open('https://github.com', '_blank')}
                             className="w-full mt-8 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                         >
                             Visit Community
@@ -214,9 +214,9 @@ export default function HelpCenter() {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-10 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400">
                 <p>© 2024 Nano Books Support. Made for professionals.</p>
                 <div className="flex gap-6">
-                    <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
-                    <a href="#" className="hover:text-primary transition-colors">Terms of Service</a>
-                    <a href="#" className="hover:text-primary transition-colors">Contact Us</a>
+                    <a href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</a>
+                    <a href="/terms" className="hover:text-primary transition-colors">Terms of Service</a>
+                    <a href="mailto:support@nanobooks.com" className="hover:text-primary transition-colors">Contact Us</a>
                 </div>
             </div>
         </div>

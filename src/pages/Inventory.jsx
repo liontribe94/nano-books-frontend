@@ -326,7 +326,7 @@ export default function Inventory() {
 
             {/* ── Footer ── */}
             <div className="text-center text-xs text-slate-400 pt-4 border-t border-slate-100 dark:border-slate-800">
-                © 2024 Nano Books Accounting System. All rights reserved. · <a href="#" className="text-primary hover:underline">Privacy Policy</a> · <a href="#" className="text-primary hover:underline">Terms of Service</a>
+                © 2024 Nano Books Accounting System. All rights reserved. · <button onClick={() => navigate('/privacy')} className="text-primary hover:underline">Privacy Policy</button> · <button onClick={() => navigate('/terms')} className="text-primary hover:underline">Terms of Service</button>
             </div>
         </div>
     );

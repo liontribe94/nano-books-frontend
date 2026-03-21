@@ -179,8 +179,8 @@ export default function LandingPage() {
                     <div>
                         <h4 className="font-bold text-white mb-4">Legals</h4>
                         <ul className="space-y-2 text-sm">
-                            <li><a href="#" className="hover:text-primary">Privacy Policy</a></li>
-                            <li><a href="#" className="hover:text-primary">Terms of Service</a></li>
+                            <li><button onClick={() => navigate('/privacy')} className="hover:text-primary text-left">Privacy Policy</button></li>
+                            <li><button onClick={() => navigate('/terms')} className="hover:text-primary text-left">Terms of Service</button></li>
                         </ul>
                     </div>
                 </div>

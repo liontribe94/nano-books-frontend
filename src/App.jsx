@@ -17,6 +17,8 @@ import LandingPage from './pages/LandingPage';
 import Pricing from './pages/Pricing';
 import Login from './pages/Login';
 import AcceptInvite from './pages/AcceptInvite';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AddExpense from './pages/AddExpense';
 import Banking from './pages/Banking';
@@ -36,6 +38,8 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Login />} />
             <Route path="/accept-invite" element={<AcceptInvite />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
 
             <Route element={
               <ProtectedRoute>
