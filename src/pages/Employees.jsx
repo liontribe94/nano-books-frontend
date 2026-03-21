@@ -23,6 +23,15 @@ const normalizeEmployee = (emp) => ({
   status: emp.status || (emp.isActive === false ? 'Inactive' : 'Active')
 });
 
+const normalizeTeamMember = (member) => ({
+  id: member.id || member.userId || member.user?.id,
+  name: member.name || member.fullName || member.user?.name || 'Unnamed Member',
+  email: member.email || member.user?.email || '-',
+  role: member.role || member.user?.role || 'Team Member',
+  department: member.department || member.dept || 'Team',
+  status: member.status || (member.isActive === false ? 'Inactive' : 'Active')
+});
+
 export default function EmployeesDashboard() {
   const navigate = useNavigate();
   const toast = useToast();
@@ -32,6 +41,7 @@ export default function EmployeesDashboard() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [busyAction, setBusyAction] = useState('');
+  const [usingTeamFallback, setUsingTeamFallback] = useState(false);
 
   const pageSize = 10;
 
@@ -42,9 +52,25 @@ export default function EmployeesDashboard() {
       const data = res?.data || res || [];
       const normalized = Array.isArray(data) ? data.map(normalizeEmployee) : [];
       setEmployees(normalized);
+      setUsingTeamFallback(false);
     } catch (error) {
-      toast(error.message || 'Failed to load employees', 'error');
-      setEmployees([]);
+      const message = (error.message || '').toLowerCase();
+      if (message.includes('public.employees')) {
+        try {
+          const teamRes = await api.organization.team.getMembers();
+          const teamData = teamRes?.data || teamRes || [];
+          const normalizedTeam = Array.isArray(teamData) ? teamData.map(normalizeTeamMember) : [];
+          setEmployees(normalizedTeam);
+          setUsingTeamFallback(true);
+          toast('Employees table is missing in backend. Showing team members for now.', 'warning');
+        } catch (fallbackError) {
+          toast(fallbackError.message || 'Failed to load team members', 'error');
+          setEmployees([]);
+        }
+      } else {
+        toast(error.message || 'Failed to load employees', 'error');
+        setEmployees([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -78,6 +104,11 @@ export default function EmployeesDashboard() {
   };
 
   const handleAddEmployee = async () => {
+    if (usingTeamFallback) {
+      toast('Employees module is not initialized yet. Please create the employees table in backend.', 'warning');
+      return;
+    }
+
     const name = window.prompt('Employee full name');
     if (!name) return;
     const email = window.prompt('Employee email');
@@ -98,6 +129,11 @@ export default function EmployeesDashboard() {
   };
 
   const handleEditEmployee = async (employee) => {
+    if (usingTeamFallback) {
+      toast('Employee edit requires the employees table in backend.', 'warning');
+      return;
+    }
+
     const role = window.prompt('Update role', employee.role);
     if (!role) return;
     const department = window.prompt('Update department', employee.department) || employee.department;
@@ -179,6 +215,12 @@ export default function EmployeesDashboard() {
       </div>
 
       <div className="bg-white border rounded-xl overflow-hidden">
+        {usingTeamFallback && (
+          <div className="px-4 py-3 text-xs sm:text-sm bg-amber-50 text-amber-800 border-b border-amber-200">
+            Employee records are unavailable because backend table `public.employees` is missing.
+            Displaying organization team members instead.
+          </div>
+        )}
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3 p-4 border-b">
           <div className="flex gap-4 text-sm flex-wrap">
             <button onClick={() => setStatusFilter('all')} className={`${statusFilter === 'all' ? 'text-blue-600 font-medium border-b-2 border-blue-600 pb-1' : 'text-slate-500 hover:text-slate-800'}`}>
@@ -232,7 +274,16 @@ export default function EmployeesDashboard() {
                   {emp.status}
                 </span>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => navigate(`/employees/${emp.id}`)} className="p-2 rounded border border-slate-200">
+                  <button
+                    onClick={() => {
+                      if (usingTeamFallback) {
+                        toast('Employee profile is unavailable until employees table is created.', 'warning');
+                        return;
+                      }
+                      navigate(`/employees/${emp.id}`);
+                    }}
+                    className="p-2 rounded border border-slate-200"
+                  >
                     <Eye className="w-4 h-4 text-slate-500" />
                   </button>
                   <button onClick={() => handleEditEmployee(emp)} disabled={busyAction === `edit-${emp.id}`} className="p-2 rounded border border-slate-200 disabled:opacity-60">
@@ -282,7 +333,15 @@ export default function EmployeesDashboard() {
                   </td>
 
                   <td className="flex gap-2 justify-center">
-                    <button onClick={() => navigate(`/employees/${emp.id}`)}>
+                    <button
+                      onClick={() => {
+                        if (usingTeamFallback) {
+                          toast('Employee profile is unavailable until employees table is created.', 'warning');
+                          return;
+                        }
+                        navigate(`/employees/${emp.id}`);
+                      }}
+                    >
                       <Eye className="w-4 h-4 cursor-pointer text-slate-500 hover:text-slate-800" />
                     </button>
                     <button onClick={() => handleEditEmployee(emp)} disabled={busyAction === `edit-${emp.id}`}>
