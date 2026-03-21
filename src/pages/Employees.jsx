@@ -141,8 +141,8 @@ export default function EmployeesDashboard() {
   }
 
   return (
-    <div className="p-8 space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 overflow-x-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Employees</h1>
           <p className="text-sm text-slate-500">Manage your workforce and organizational hierarchy.</p>
@@ -151,14 +151,14 @@ export default function EmployeesDashboard() {
         <button
           onClick={handleAddEmployee}
           disabled={busyAction === 'add'}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 disabled:opacity-60"
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-60 w-full sm:w-auto"
         >
           {busyAction === 'add' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           Add Employee
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="bg-white border rounded-xl p-5">
           <Users className="w-6 h-6 text-blue-500" />
           <p className="text-xs text-slate-500 mt-3">Total Employees</p>
@@ -178,9 +178,9 @@ export default function EmployeesDashboard() {
         </div>
       </div>
 
-      <div className="bg-white border rounded-xl">
-        <div className="flex justify-between items-center p-4 border-b">
-          <div className="flex gap-4 text-sm">
+      <div className="bg-white border rounded-xl overflow-hidden">
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3 p-4 border-b">
+          <div className="flex gap-4 text-sm flex-wrap">
             <button onClick={() => setStatusFilter('all')} className={`${statusFilter === 'all' ? 'text-blue-600 font-medium border-b-2 border-blue-600 pb-1' : 'text-slate-500 hover:text-slate-800'}`}>
               All Employees
             </button>
@@ -190,7 +190,7 @@ export default function EmployeesDashboard() {
             </button>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <button
               onClick={() => setStatusFilter(statusFilter === 'active' ? 'all' : 'active')}
               className="flex items-center gap-1 text-sm border px-3 py-1 rounded-lg hover:bg-gray-50"
@@ -210,60 +210,101 @@ export default function EmployeesDashboard() {
           </div>
         </div>
 
-        <table className="w-full text-sm">
-          <thead className="text-slate-500 text-xs">
-            <tr className="border-b">
-              <th className="text-left p-4">Name</th>
-              <th className="text-left">Role</th>
-              <th className="text-left">Department</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {pagedEmployees.map((emp) => (
-              <tr key={emp.id} className="border-b hover:bg-gray-50">
-                <td className="p-4">
-                  <div>
-                    <p className="font-medium">{emp.name}</p>
-                    <p className="text-xs text-slate-500">{emp.email}</p>
-                  </div>
-                </td>
-
-                <td>{emp.role}</td>
-
-                <td>{emp.department}</td>
-
-                <td>
-                  <span className={`text-xs px-2 py-1 rounded ${statusStyle(emp.status)}`}>
-                    {emp.status}
-                  </span>
-                </td>
-
-                <td className="flex gap-2 justify-center">
-                  <button onClick={() => navigate(`/employees/${emp.id}`)}>
-                    <Eye className="w-4 h-4 cursor-pointer text-slate-500 hover:text-slate-800" />
+        <div className="md:hidden divide-y">
+          {pagedEmployees.map((emp) => (
+            <div key={emp.id} className="p-4 space-y-3">
+              <div>
+                <p className="font-semibold text-slate-800">{emp.name}</p>
+                <p className="text-xs text-slate-500 break-all">{emp.email}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-xs text-slate-500">Role</p>
+                  <p className="text-slate-700">{emp.role}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Department</p>
+                  <p className="text-slate-700">{emp.department}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className={`text-xs px-2 py-1 rounded ${statusStyle(emp.status)}`}>
+                  {emp.status}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => navigate(`/employees/${emp.id}`)} className="p-2 rounded border border-slate-200">
+                    <Eye className="w-4 h-4 text-slate-500" />
                   </button>
-                  <button onClick={() => handleEditEmployee(emp)} disabled={busyAction === `edit-${emp.id}`}>
+                  <button onClick={() => handleEditEmployee(emp)} disabled={busyAction === `edit-${emp.id}`} className="p-2 rounded border border-slate-200 disabled:opacity-60">
                     {busyAction === `edit-${emp.id}` ? (
                       <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
                     ) : (
-                      <Pencil className="w-4 h-4 cursor-pointer text-slate-500 hover:text-slate-800" />
+                      <Pencil className="w-4 h-4 text-slate-500" />
                     )}
                   </button>
-                </td>
-              </tr>
-            ))}
-            {pagedEmployees.length === 0 && (
-              <tr>
-                <td colSpan="5" className="text-center py-8 text-slate-500">No employees found.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                </div>
+              </div>
+            </div>
+          ))}
+          {pagedEmployees.length === 0 && (
+            <div className="text-center py-8 text-slate-500">No employees found.</div>
+          )}
+        </div>
 
-        <div className="flex justify-between items-center p-4 text-xs text-slate-500">
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-sm min-w-[720px]">
+            <thead className="text-slate-500 text-xs">
+              <tr className="border-b">
+                <th className="text-left p-4">Name</th>
+                <th className="text-left">Role</th>
+                <th className="text-left">Department</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {pagedEmployees.map((emp) => (
+                <tr key={emp.id} className="border-b hover:bg-gray-50">
+                  <td className="p-4">
+                    <div>
+                      <p className="font-medium">{emp.name}</p>
+                      <p className="text-xs text-slate-500 break-all">{emp.email}</p>
+                    </div>
+                  </td>
+
+                  <td>{emp.role}</td>
+                  <td>{emp.department}</td>
+                  <td>
+                    <span className={`text-xs px-2 py-1 rounded ${statusStyle(emp.status)}`}>
+                      {emp.status}
+                    </span>
+                  </td>
+
+                  <td className="flex gap-2 justify-center">
+                    <button onClick={() => navigate(`/employees/${emp.id}`)}>
+                      <Eye className="w-4 h-4 cursor-pointer text-slate-500 hover:text-slate-800" />
+                    </button>
+                    <button onClick={() => handleEditEmployee(emp)} disabled={busyAction === `edit-${emp.id}`}>
+                      {busyAction === `edit-${emp.id}` ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+                      ) : (
+                        <Pencil className="w-4 h-4 cursor-pointer text-slate-500 hover:text-slate-800" />
+                      )}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {pagedEmployees.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="text-center py-8 text-slate-500">No employees found.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-4 text-xs text-slate-500">
           <p>Showing {filteredEmployees.length === 0 ? 0 : (page - 1) * pageSize + 1} to {Math.min(page * pageSize, filteredEmployees.length)} of {filteredEmployees.length} entries</p>
 
           <div className="flex gap-2">
