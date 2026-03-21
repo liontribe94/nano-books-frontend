@@ -74,28 +74,61 @@ export default function Sales() {
     const [statusFilter, setStatusFilter] = useState('all');
     const [stats, setStats] = useState({ totalRevenue: 0, pendingAmount: 0, overdueAmount: 0 });
     const [actionLoadingId, setActionLoadingId] = useState(null);
+    const [customers, setCustomers] = useState([]);
 
     const fetchInvoices = async () => {
         setLoading(true);
         try {
+            // Fetch invoices first
             const res = await api.invoices.getAll();
             const data = res?.data || res || [];
+
+            // Attempt to fetch customers but don't fail if it fails
+            let customerMap = {};
+            try {
+                const custRes = await api.customers.getAll();
+                const custData = custRes?.data || custRes || [];
+                setCustomers(Array.isArray(custData) ? custData : []);
+                customerMap = (Array.isArray(custData) ? custData : []).reduce((acc, c) => {
+                    if (c && c.id) acc[c.id] = c.name;
+                    return acc;
+                }, {});
+            } catch (custErr) {
+                console.error('Failed to fetch customers:', custErr);
+            }
 
             const formatted = data.map((inv) => {
                 const amount = Number(inv.total_amount || inv.totalAmount || 0);
                 const rawStatus = (inv.status || 'pending').toLowerCase();
                 const status = rawStatus === 'draft'
-                    ? 'draft'
-                    : rawStatus === 'paid'
-                        ? 'Paid'
-                        : rawStatus === 'overdue'
-                            ? 'Overdue'
-                            : 'Pending';
+                ? 'draft'
+                : rawStatus === 'paid'
+                ? 'Paid'
+                : rawStatus === 'overdue'
+                ? 'Overdue'
+                : 'Pending';
+                
+                const customerId = inv.customer_id || inv.customerId || inv.customer;
+                const customerNameFromData = inv.customer_name || inv.customerName;
+                
+                const isId = (val) => {
+                    if (typeof val !== 'string') return false;
+                    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val) || /^\d+$/.test(val);
+                };
+                
+                let clientName = 'Unknown Client';
+                if (customerNameFromData && !isId(customerNameFromData)) {
+                    clientName = customerNameFromData;
+                } else if (customerId && customerMap[customerId]) {
+                    clientName = customerMap[customerId];
+                } else if (customerNameFromData && customerMap[customerNameFromData]) {
+                    clientName = customerMap[customerNameFromData];
+                }
 
                 return {
                     backendId: inv.id,
                     displayId: inv.invoice_number || inv.invoiceNumber || inv.id,
-                    client: inv.customer?.name || inv.customerName || inv.customerId || 'Unknown Client',
+                    client: clientName,
                     amount,
                     amountLabel: `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
                     date: new Date(inv.issue_date || inv.issueDate || inv.created_at || inv.createdAt || Date.now()).toLocaleDateString(),
@@ -116,11 +149,11 @@ export default function Sales() {
             setInvoices(formatted);
             setStats(computed);
         } catch (error) {
+            console.error('Failed to load invoices:', error);
             toast(error.message || 'Failed to load invoices', 'error');
             setInvoices([]);
         } finally {
             setLoading(false);
-
         }
     };
 

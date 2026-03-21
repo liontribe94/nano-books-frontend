@@ -16,11 +16,11 @@ import {
 
 const normalizeEmployee = (emp) => ({
   id: emp.id,
-  name: emp.name || 'Unnamed Employee',
+  name: (emp.firstName && emp.lastName) ? `${emp.firstName} ${emp.lastName}` : (emp.name || 'Unnamed Employee'),
   email: emp.email || '-',
-  role: emp.role || 'Staff',
-  department: emp.department || emp.dept || 'General',
-  status: emp.status || (emp.isActive === false ? 'Inactive' : 'Active')
+  role: emp.position || emp.role || 'Staff',
+  department: emp.department || 'General',
+  status: emp.status || 'Active'
 });
 
 const normalizeTeamMember = (member) => ({

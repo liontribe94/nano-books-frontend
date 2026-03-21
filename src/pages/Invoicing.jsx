@@ -426,6 +426,7 @@ export default function Invoicing() {
         try {
             const invoiceData = {
                 customerId: customer.id,
+                customerName: customer.name,
                 invoiceNumber: `INV-${Date.now().toString().slice(-4)}`,
                 issueDate: new Date().toISOString(),
                 dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
