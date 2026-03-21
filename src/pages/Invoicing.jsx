@@ -283,20 +283,22 @@ const LineItemRow = ({ item, onChange, onRemove, products, formatCurrency }) => 
                     className="w-full text-sm text-center bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-primary"
                 />
             </td>
-            <td className="py-3 px-3 w-28 relative z-10">
+            <td className="py-3 px-3 w-40 md:w-28 relative z-10">
                 <input
                     type="text"
+                    inputMode="decimal"
                     value={item.rate}
                     onChange={(e) => onChange({ ...item, rate: e.target.value })}
-                    className="w-full text-sm text-right bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-primary"
+                    className="w-full min-w-[8.5rem] md:min-w-0 text-base md:text-sm text-right bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 md:px-2 md:py-1.5 focus:outline-none focus:border-primary"
                 />
             </td>
-            <td className="py-3 px-3 w-20 relative z-10">
+            <td className="py-3 px-3 w-28 md:w-20 relative z-10">
                 <input
                     type="number"
+                    inputMode="decimal"
                     value={item.tax}
                     onChange={(e) => onChange({ ...item, tax: Number(e.target.value) })}
-                    className="w-full text-sm text-center bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-primary"
+                    className="w-full min-w-[6.5rem] md:min-w-0 text-base md:text-sm text-center bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 md:px-2 md:py-1.5 focus:outline-none focus:border-primary"
                 />
             </td>
             <td className="py-3 px-3 w-28 text-right relative z-10">
