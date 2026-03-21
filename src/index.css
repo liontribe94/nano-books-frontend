@@ -11,6 +11,22 @@ body {
   padding: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
+}
+
+input,
+textarea,
+select {
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    min-height: 48px;
+  }
 }
 
 /* Custom Scrollbar Styles */

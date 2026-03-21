@@ -74,8 +74,8 @@ export default function AcceptInvite() {
 
     if (!token) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-                <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm">
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 p-3 sm:p-4 overflow-x-hidden">
+                <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200 p-5 sm:p-8 text-center shadow-sm">
                     <h1 className="text-xl font-bold text-slate-800 mb-2">Invalid Invitation Link</h1>
                     <p className="text-sm text-slate-500 mb-6">
                         This invite link is missing a token. Please open the link from your invitation email.
@@ -90,8 +90,8 @@ export default function AcceptInvite() {
 
     if (accepted) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
-                <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center shadow-sm">
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-3 sm:p-4 overflow-x-hidden">
+                <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-8 text-center shadow-sm">
                     <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
                         <CheckCircle2 className="w-8 h-8" />
                     </div>
@@ -106,15 +106,15 @@ export default function AcceptInvite() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-3 sm:p-4 overflow-x-hidden">
             <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
-                <div className="p-8 md:p-12 flex flex-col justify-center order-2 md:order-1">
+                <div className="p-5 sm:p-8 md:p-12 flex flex-col justify-center order-2 md:order-1 min-w-0">
                     <div className="mb-8 text-center md:text-left">
                         <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
                             <div className="w-10 h-10 rounded-xl bg-primary text-white font-bold text-xl flex items-center justify-center">N</div>
                             <span className="font-bold text-2xl tracking-tight text-slate-900 dark:text-white">Nano<span className="text-primary">Books</span></span>
                         </div>
-                        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Join Your Organization</h1>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-2">Join Your Organization</h1>
                         <p className="text-slate-500 dark:text-slate-400">Set up your account to accept the invitation.</p>
                     </div>
 
@@ -130,7 +130,7 @@ export default function AcceptInvite() {
                                     required
                                     value={form.name}
                                     onChange={(e) => update('name', e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                                    className="w-full pl-10 pr-4 py-3 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-base"
                                     placeholder="John Doe"
                                 />
                             </div>
@@ -147,7 +147,7 @@ export default function AcceptInvite() {
                                     required
                                     value={form.email}
                                     onChange={(e) => update('email', e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                                    className="w-full pl-10 pr-4 py-3 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-base"
                                     placeholder="name@company.com"
                                 />
                             </div>
@@ -164,7 +164,7 @@ export default function AcceptInvite() {
                                     required
                                     value={form.password}
                                     onChange={(e) => update('password', e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                                    className="w-full pl-10 pr-4 py-3 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-base"
                                     placeholder="Create a password"
                                 />
                             </div>
@@ -181,7 +181,7 @@ export default function AcceptInvite() {
                                     required
                                     value={form.confirmPassword}
                                     onChange={(e) => update('confirmPassword', e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                                    className="w-full pl-10 pr-4 py-3 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-base"
                                     placeholder="Confirm password"
                                 />
                             </div>

@@ -51,10 +51,10 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-3 sm:p-4 overflow-x-hidden">
             <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
 
-                <div className="p-8 md:p-12 flex flex-col justify-center order-2 md:order-1">
+                <div className="p-5 sm:p-8 md:p-12 flex flex-col justify-center order-2 md:order-1 min-w-0">
                     <div className="mb-8 text-center md:text-left">
                         <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
                             <div className="w-10 h-10 rounded-xl bg-primary text-white font-bold text-xl shadow-lg shadow-primary/30 flex items-center justify-center">
@@ -62,7 +62,7 @@ export default function Login() {
                             </div>
                             <span className="font-bold text-2xl tracking-tight text-slate-900 dark:text-white">Nano<span className="text-primary">Books</span></span>
                         </div>
-                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-2">
                             {isLogin ? 'Welcome back' : 'Create an account'}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
@@ -85,7 +85,7 @@ export default function Login() {
                                             required
                                             value={formData.name}
                                             onChange={handleChange}
-                                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                                            className="w-full pl-10 pr-4 py-3 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-base text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                             placeholder="John Doe"
                                         />
                                     </div>
@@ -102,7 +102,7 @@ export default function Login() {
                                             required
                                             value={formData.companyName}
                                             onChange={handleChange}
-                                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                                            className="w-full pl-10 pr-4 py-3 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-base text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                             placeholder="Acme Inc."
                                         />
                                     </div>
@@ -122,7 +122,7 @@ export default function Login() {
                                     required
                                     value={formData.email}
                                     onChange={handleChange}
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                                    className="w-full pl-10 pr-4 py-3 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-base text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                     placeholder="name@company.com"
                                 />
                             </div>
@@ -140,7 +140,7 @@ export default function Login() {
                                     required
                                     value={formData.password}
                                     onChange={handleChange}
-                                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                                    className="w-full pl-10 pr-10 py-3 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-base text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                     placeholder="password"
                                 />
                                 <button
