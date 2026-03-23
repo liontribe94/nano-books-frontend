@@ -78,7 +78,7 @@ export default function HelpCenter() {
         },
         {
             question: "What file formats can I export?",
-            answer: "You can export most reports and tables as CSV, Excel, or PDF. Look for the 'Export' or 'Download' button at the top right of any page."
+            answer: "You can export reports and tables as PDF. Look for the 'Export' or 'Download' button at the top right of any page."
         }
     ];
 

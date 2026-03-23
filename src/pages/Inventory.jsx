@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui/Toast';
 import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import CurrencySelect from '../components/ui/CurrencySelect';
 import {
     Search,
     Plus,
@@ -61,6 +63,7 @@ const StockBadge = ({ quantity, reorderPoint }) => {
 export default function Inventory() {
     const navigate = useNavigate();
     const toast = useToast();
+    const { formatCurrency } = useAuth();
     const [loading, setLoading] = useState(true);
     const [products, setProducts] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -160,6 +163,7 @@ export default function Inventory() {
                     <Plus className="w-4 h-4" />
                     Add Product
                 </button>
+                <CurrencySelect />
             </div>
 
             {/* ── Stats Cards ── */}
@@ -169,7 +173,7 @@ export default function Inventory() {
                 <StatCard label="Low Stock Items" value={products.filter(p => (p.stockQuantity || 0) <= (p.reorderPoint || 5) && (p.stockQuantity || 0) > 0).length} icon={AlertTriangle} iconColor="text-amber-500" />
                 <StatCard
                     label="Inventory Value"
-                    value={`$${stats.value.toLocaleString()}`}
+                    value={formatCurrency(stats.value)}
                     icon={DollarSign}
                     iconColor="text-emerald-500"
                 />
@@ -248,10 +252,10 @@ export default function Inventory() {
                                                     <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[11px] font-mono text-slate-500">{product.sku}</span>
                                                 </td>
                                                 <td className="px-5 py-4 text-right text-sm text-slate-600 dark:text-slate-400">
-                                                    ${Number(cost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                    {formatCurrency(cost)}
                                                 </td>
                                                 <td className="px-5 py-4 text-right text-sm font-semibold text-slate-800 dark:text-white">
-                                                    ${Number(price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                    {formatCurrency(price)}
                                                 </td>
                                                 <td className="px-5 py-4 text-center">
                                                     <span className="text-sm font-bold text-slate-800 dark:text-white">

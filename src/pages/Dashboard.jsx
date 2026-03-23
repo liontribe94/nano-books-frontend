@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useToast } from '../components/ui/Toast';
 import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import CurrencySelect from '../components/ui/CurrencySelect';
 import {
     TrendingUp,
     CreditCard,
@@ -84,6 +86,7 @@ const TransactionRow = ({ icon: Icon, name, subtext, date, category, amount, sta
 export default function Dashboard() {
     const navigate = useNavigate();
     const toast = useToast();
+    const { formatCurrency } = useAuth();
     const [timeRange, setTimeRange] = useState('7d');
     const [loading, setLoading] = useState(true);
     const [kpiData, setKpiData] = useState([]);
@@ -119,7 +122,7 @@ export default function Dashboard() {
                 setKpiData([
                     {
                         title: 'Total Revenue',
-                        value: `$${stats.revenue?.value?.toLocaleString() || '0.00'}`,
+                        value: formatCurrency(stats.revenue?.value || 0),
                         change: `${stats.revenue?.change > 0 ? '+' : ''}${stats.revenue?.change || 0}%`,
                         trend: stats.revenue?.change >= 0 ? 'up' : 'down',
                         icon: TrendingUp,
@@ -128,7 +131,7 @@ export default function Dashboard() {
                     },
                     {
                         title: 'Total Expenses',
-                        value: `$${stats.expenses?.value?.toLocaleString() || '0.00'}`,
+                        value: formatCurrency(stats.expenses?.value || 0),
                         change: `${stats.expenses?.change > 0 ? '+' : ''}${stats.expenses?.change || 0}%`,
                         trend: stats.expenses?.change <= 0 ? 'up' : 'down', // expenses down is good, but typically red implies "expense" category color
                         icon: Banknote,
@@ -137,7 +140,7 @@ export default function Dashboard() {
                     },
                     {
                         title: 'Net Profit',
-                        value: `$${stats.profit?.value?.toLocaleString() || '0.00'}`,
+                        value: formatCurrency(stats.profit?.value || 0),
                         change: stats.profit?.change ? `${stats.profit.change}%` : 'N/A',
                         trend: 'up',
                         icon: Wallet,
@@ -153,7 +156,7 @@ export default function Dashboard() {
                     subtext: tx.reference || 'REF',
                     date: new Date(tx.date).toLocaleDateString(),
                     category: { label: tx.category || 'General', bg: 'bg-slate-100', text: 'text-slate-600' }, // Simplified mapping
-                    amount: `${tx.amount >= 0 ? '+' : '-'}$${Math.abs(tx.amount).toLocaleString()}`,
+                    amount: `${tx.amount >= 0 ? '+' : '-'}${formatCurrency(Math.abs(tx.amount))}`,
                     status: tx.status || 'Pending'
                 })) : [];
 
@@ -169,7 +172,7 @@ export default function Dashboard() {
 
                 // Prepare Expense Data
                 setExpenseData({
-                    total: `$${((expenses?.total || 0) / 1000).toFixed(1)}k`,
+                    total: formatCurrency(expenses?.total || 0),
                     categories: expenses?.categories || []
                 });
 
@@ -181,7 +184,7 @@ export default function Dashboard() {
                 setTransactions([]);
                 setCashFlowData([]);
                 setExpenseData({
-                    total: '$0.00',
+                    total: formatCurrency(0),
                     categories: []
                 });
             } finally {
@@ -209,6 +212,7 @@ export default function Dashboard() {
                     <p className="text-slate-500 dark:text-slate-400">Welcome back, Alex. Here's what's happening today.</p>
                 </div>
                 <div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm self-stretch sm:self-auto overflow-x-auto">
+                    <CurrencySelect />
                     {[{ key: '7d', label: '7 Days' }, { key: '30d', label: '30 Days' }, { key: '1y', label: 'Last Year' }].map((t) => (
                         <button key={t.key} onClick={() => { setTimeRange(t.key); toast(`Showing ${t.label} data`, 'info'); }} className={`px-3 py-1 text-xs font-medium rounded transition-colors whitespace-nowrap ${timeRange === t.key ? 'bg-slate-100 dark:bg-slate-700' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>{t.label}</button>
                     ))}

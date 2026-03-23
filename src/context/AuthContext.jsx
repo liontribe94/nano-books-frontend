@@ -14,9 +14,17 @@ export const AuthProvider = ({ children }) => {
     };
 
     const formatCurrency = (amount) => {
-        const symbolMap = { USD: '$', EUR: '€', GBP: '£', NGN: '₦' };
-        const sym = symbolMap[currency] || '$';
-        return `${sym}${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        const value = Number(amount || 0);
+        try {
+            return new Intl.NumberFormat(undefined, {
+                style: 'currency',
+                currency,
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(value);
+        } catch {
+            return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
     };
 
     useEffect(() => {
@@ -65,3 +73,5 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+
+

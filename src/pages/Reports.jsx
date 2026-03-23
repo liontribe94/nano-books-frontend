@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { useToast } from '../components/ui/Toast';
+import { exportRowsToPdf } from '../lib/pdfExport';
+import { useAuth } from '../context/AuthContext';
+import CurrencySelect from '../components/ui/CurrencySelect';
 import {
     Calendar,
     Table2,
@@ -71,7 +74,7 @@ const CategoryNav = ({ active, onSelect }) => {
 
 const DetailRow = ({ name, q1, q2, q3, total, bold, indent = 0 }) => (
     <tr className={`border-b border-slate-100 dark:border-slate-800 last:border-0 ${bold ? 'bg-slate-50/50 dark:bg-slate-800/20' : ''}`}>
-        <td className={`px-5 py-3 text-sm ${bold ? 'font-bold text-slate-800 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`} style={{ paddingLeft: `${20 + indent * 20}px` }}>{bold ? `� ${name}` : name}</td>
+        <td className={`px-5 py-3 text-sm ${bold ? 'font-bold text-slate-800 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`} style={{ paddingLeft: `${20 + indent * 20}px` }}>{bold ? `• ${name}` : name}</td>
         <td className={`px-5 py-3 text-sm text-right ${bold ? 'font-bold text-slate-800 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{q1}</td>
         <td className={`px-5 py-3 text-sm text-right ${bold ? 'font-bold text-slate-800 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{q2}</td>
         <td className={`px-5 py-3 text-sm text-right ${bold ? 'font-bold text-slate-800 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>{q3}</td>
@@ -81,6 +84,7 @@ const DetailRow = ({ name, q1, q2, q3, total, bold, indent = 0 }) => (
 
 export default function Reports() {
     const toast = useToast();
+    const { formatCurrency } = useAuth();
     const [activeReport, setActiveReport] = useState('Profit and Loss');
     const [viewMode, setViewMode] = useState('table');
     const [loading, setLoading] = useState(true);
@@ -131,23 +135,21 @@ export default function Reports() {
     }, [period]);
 
     const financialDetails = [
-        { name: 'Income', q1: `$${(stats.totalIncome * 0.2).toFixed(2)}`, q2: `$${(stats.totalIncome * 0.3).toFixed(2)}`, q3: `$${(stats.totalIncome * 0.5).toFixed(2)}`, total: `$${Number(stats.totalIncome).toFixed(2)}`, bold: true },
-        { name: 'Operating Expenses', q1: `$${(stats.totalExpenses * 0.25).toFixed(2)}`, q2: `$${(stats.totalExpenses * 0.35).toFixed(2)}`, q3: `$${(stats.totalExpenses * 0.4).toFixed(2)}`, total: `$${Number(stats.totalExpenses).toFixed(2)}`, bold: true },
-        { name: 'Net Profit', q1: `$${((stats.totalIncome - stats.totalExpenses) * 0.2).toFixed(2)}`, q2: `$${((stats.totalIncome - stats.totalExpenses) * 0.3).toFixed(2)}`, q3: `$${((stats.totalIncome - stats.totalExpenses) * 0.5).toFixed(2)}`, total: `$${Number(stats.netProfit).toFixed(2)}`, bold: true }
+        { name: 'Income', q1: formatCurrency(stats.totalIncome * 0.2), q2: formatCurrency(stats.totalIncome * 0.3), q3: formatCurrency(stats.totalIncome * 0.5), total: formatCurrency(stats.totalIncome), bold: true },
+        { name: 'Operating Expenses', q1: formatCurrency(stats.totalExpenses * 0.25), q2: formatCurrency(stats.totalExpenses * 0.35), q3: formatCurrency(stats.totalExpenses * 0.4), total: formatCurrency(stats.totalExpenses), bold: true },
+        { name: 'Net Profit', q1: formatCurrency((stats.totalIncome - stats.totalExpenses) * 0.2), q2: formatCurrency((stats.totalIncome - stats.totalExpenses) * 0.3), q3: formatCurrency((stats.totalIncome - stats.totalExpenses) * 0.5), total: formatCurrency(stats.netProfit), bold: true }
     ];
 
-    const exportCsv = () => {
+    const exportPdf = () => {
         const header = ['account', 'q1', 'q2', 'q3', 'total'];
         const rows = financialDetails.map((r) => [r.name, r.q1, r.q2, r.q3, r.total]);
-        const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `report-${period}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast('Report exported', 'success');
+        exportRowsToPdf({
+            title: `Report Export (${periodLabel})`,
+            headers: header,
+            rows,
+            filename: `report-${period}.pdf`
+        });
+        toast('Report exported as PDF', 'success');
     };
 
     const cyclePeriod = () => setPeriod((p) => p === 'year' ? '30d' : p === '30d' ? '7d' : 'year');
@@ -167,19 +169,20 @@ export default function Reports() {
                     </button>
                 </div>
                 <div className="flex items-center gap-3">
+                    <CurrencySelect />
                     <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
                         <button onClick={() => setViewMode('table')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'table' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500'}`}><Table2 className="w-3.5 h-3.5" /> Table</button>
                         <button onClick={() => setViewMode('chart')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'chart' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500'}`}><BarChart3 className="w-3.5 h-3.5" /> Chart</button>
                     </div>
-                    <button onClick={exportCsv} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"><Download className="w-4 h-4" /> Export</button>
+                    <button onClick={exportPdf} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"><Download className="w-4 h-4" /> Export</button>
                     <button onClick={() => fetchReportData(period)} className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium shadow-sm shadow-primary/20 transition-all">Refresh</button>
                 </div>
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-                <StatCard label="Total Income" value={`$${Number(stats.totalIncome).toLocaleString()}`} change={stats.incomeChange} icon={TrendingUp} iconBg="bg-emerald-500" />
-                <StatCard label="Total Expenses" value={`$${Number(stats.totalExpenses).toLocaleString()}`} change={stats.expenseChange} icon={TrendingDown} iconBg="bg-rose-500" />
-                <StatCard label="Net Profit" value={`$${Number(stats.netProfit).toLocaleString()}`} change={stats.profitChange} icon={DollarSign} iconBg="bg-primary" />
+                <StatCard label="Total Income" value={formatCurrency(stats.totalIncome)} change={stats.incomeChange} icon={TrendingUp} iconBg="bg-emerald-500" />
+                <StatCard label="Total Expenses" value={formatCurrency(stats.totalExpenses)} change={stats.expenseChange} icon={TrendingDown} iconBg="bg-rose-500" />
+                <StatCard label="Net Profit" value={formatCurrency(stats.netProfit)} change={stats.profitChange} icon={DollarSign} iconBg="bg-primary" />
                 <StatCard label="Profit Margin" value={`${Number(stats.profitMargin).toFixed(1)}%`} change={stats.marginChange} icon={Percent} iconBg="bg-violet-500" />
             </div>
 
@@ -222,7 +225,7 @@ export default function Reports() {
                     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                             <h3 className="font-bold text-slate-800 dark:text-white">Financial Details</h3>
-                            <button onClick={exportCsv} className="text-slate-400 hover:text-slate-600 transition-colors"><Download className="w-4 h-4" /></button>
+                            <button onClick={exportPdf} className="text-slate-400 hover:text-slate-600 transition-colors"><Download className="w-4 h-4" /></button>
                         </div>
 
                         <div className="overflow-x-auto">
@@ -239,4 +242,5 @@ export default function Reports() {
         </div>
     );
 }
+
 

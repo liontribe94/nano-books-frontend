@@ -2,6 +2,9 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui/Toast';
 import { api } from '../lib/api';
+import { exportRowsToPdf } from '../lib/pdfExport';
+import { useAuth } from '../context/AuthContext';
+import CurrencySelect from '../components/ui/CurrencySelect';
 import {
     Plus,
     Search,
@@ -18,7 +21,7 @@ import {
     RefreshCw
 } from 'lucide-react';
 
-const ExpenseRow = ({ id, merchant, category, amount, date, status, onAction, onDelete, actionLoadingId, deletingId }) => {
+const ExpenseRow = ({ id, merchant, category, amount, date, status, onAction, onDelete, actionLoadingId, deletingId, formatCurrency }) => {
     const categoryStyles = {
         Software: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600',
         Meals: 'bg-orange-50 dark:bg-orange-500/10 text-orange-600',
@@ -47,7 +50,7 @@ const ExpenseRow = ({ id, merchant, category, amount, date, status, onAction, on
                 </span>
             </td>
             <td className="px-6 py-4 text-right font-bold text-slate-800 dark:text-slate-200">
-                ${parseFloat(amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {formatCurrency(amount)}
             </td>
             <td className="px-6 py-4 text-center">
                 <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${(status || '').toLowerCase() === 'approved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
@@ -71,6 +74,7 @@ const ExpenseRow = ({ id, merchant, category, amount, date, status, onAction, on
 export default function Expenses() {
     const navigate = useNavigate();
     const toast = useToast();
+    const { formatCurrency } = useAuth();
     const [expenses, setExpenses] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
     const [searchTerm, setSearchTerm] = React.useState('');
@@ -145,16 +149,13 @@ export default function Expenses() {
     const handleExport = () => {
         const header = ['id', 'merchant', 'category', 'amount', 'date', 'status'];
         const rows = filteredExpenses.map((exp) => [exp.id, exp.merchant, exp.category, exp.amount, new Date(exp.date).toISOString(), exp.status]);
-        const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'expenses.csv';
-        a.click();
-        URL.revokeObjectURL(url);
-        toast('Expenses exported', 'success');
+        exportRowsToPdf({
+            title: 'Expenses Export',
+            headers: header,
+            rows,
+            filename: 'expenses.pdf'
+        });
+        toast('Expenses exported as PDF', 'success');
     };
 
     const categoryTotals = filteredExpenses.reduce((acc, exp) => {
@@ -174,6 +175,7 @@ export default function Expenses() {
                     <p className="text-slate-500 dark:text-slate-400 text-sm">Track and manage company spending.</p>
                 </div>
                 <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
+                    <CurrencySelect className="flex-1 sm:flex-none" />
                     <button onClick={handleExport} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
                         <Download className="w-4 h-4" />
                         <span className="hidden xs:inline">Export</span>
@@ -192,7 +194,7 @@ export default function Expenses() {
                         <div className="absolute inset-0 rounded-full border-[16px] border-primary border-t-transparent border-l-transparent -rotate-45"></div>
                         <div className="text-center">
                             <p className="text-xs text-slate-400 uppercase font-bold">Total</p>
-                            <p className="text-xl font-bold">${totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                            <p className="text-xl font-bold">{formatCurrency(totalSpent)}</p>
                         </div>
                     </div>
                     <div className="mt-6 w-full space-y-2">
@@ -264,6 +266,7 @@ export default function Expenses() {
                                                 onDelete={handleDelete}
                                                 actionLoadingId={actionLoadingId}
                                                 deletingId={deletingId}
+                                                formatCurrency={formatCurrency}
                                             />
                                         ))
                                     ) : (
@@ -280,7 +283,5 @@ export default function Expenses() {
         </div>
     );
 }
-
-
 
 

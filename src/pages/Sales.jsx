@@ -2,6 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui/Toast';
 import { api } from '../lib/api';
+import { exportRowsToPdf } from '../lib/pdfExport';
+import { useAuth } from '../context/AuthContext';
+import CurrencySelect from '../components/ui/CurrencySelect';
 import {
     Plus,
     Search,
@@ -15,6 +18,16 @@ import {
     Loader2,
     RefreshCw
 } from 'lucide-react';
+
+const PENDING_SALES_INVOICES_KEY = 'nanobooks_pending_sales_invoices';
+
+const normalizeInvoiceStatus = (raw) => {
+    const rawStatus = (raw || 'pending').toLowerCase();
+    if (rawStatus === 'draft') return { rawStatus, status: 'draft' };
+    if (rawStatus === 'paid') return { rawStatus, status: 'Paid' };
+    if (rawStatus === 'overdue') return { rawStatus, status: 'Overdue' };
+    return { rawStatus, status: 'Pending' };
+};
 
 const statusStyles = {
     Paid: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600',
@@ -30,7 +43,7 @@ const statusIcons = {
     draft: FileText
 };
 
-const InvoiceRow = ({ invoice, onAction, actionLoadingId }) => {
+const InvoiceRow = ({ invoice, onAction, actionLoadingId, formatCurrency }) => {
     const StatusIcon = statusIcons[invoice.status] || Clock;
 
     return (
@@ -48,7 +61,7 @@ const InvoiceRow = ({ invoice, onAction, actionLoadingId }) => {
             </td>
             <td className="px-6 py-4 text-center text-sm text-slate-500">{invoice.date}</td>
             <td className="px-6 py-4 text-right font-bold text-slate-800 dark:text-slate-200">
-                {invoice.amountLabel}
+                {formatCurrency(invoice.amount)}
             </td>
             <td className="px-6 py-4 text-center">
                 <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase ${statusStyles[invoice.status] || statusStyles.draft}`}>
@@ -68,13 +81,13 @@ const InvoiceRow = ({ invoice, onAction, actionLoadingId }) => {
 export default function Sales() {
     const navigate = useNavigate();
     const toast = useToast();
+    const { formatCurrency } = useAuth();
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [stats, setStats] = useState({ totalRevenue: 0, pendingAmount: 0, overdueAmount: 0 });
     const [actionLoadingId, setActionLoadingId] = useState(null);
-    const [customers, setCustomers] = useState([]);
 
     const fetchInvoices = async () => {
         setLoading(true);
@@ -88,7 +101,6 @@ export default function Sales() {
             try {
                 const custRes = await api.customers.getAll();
                 const custData = custRes?.data || custRes || [];
-                setCustomers(Array.isArray(custData) ? custData : []);
                 customerMap = (Array.isArray(custData) ? custData : []).reduce((acc, c) => {
                     if (c && c.id) acc[c.id] = c.name;
                     return acc;
@@ -99,14 +111,7 @@ export default function Sales() {
 
             const formatted = data.map((inv) => {
                 const amount = Number(inv.total_amount || inv.totalAmount || 0);
-                const rawStatus = (inv.status || 'pending').toLowerCase();
-                const status = rawStatus === 'draft'
-                ? 'draft'
-                : rawStatus === 'paid'
-                ? 'Paid'
-                : rawStatus === 'overdue'
-                ? 'Overdue'
-                : 'Pending';
+                const { rawStatus, status } = normalizeInvoiceStatus(inv.status);
                 
                 const customerId = inv.customer_id || inv.customerId || inv.customer;
                 const customerNameFromData = inv.customer_name || inv.customerName;
@@ -130,11 +135,29 @@ export default function Sales() {
                     displayId: inv.invoice_number || inv.invoiceNumber || inv.id,
                     client: clientName,
                     amount,
-                    amountLabel: `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
                     date: new Date(inv.issue_date || inv.issueDate || inv.created_at || inv.createdAt || Date.now()).toLocaleDateString(),
                     rawStatus,
                     status
                 };
+            });
+
+            const pendingLocal = JSON.parse(localStorage.getItem(PENDING_SALES_INVOICES_KEY) || '[]');
+            const existingIds = new Set(formatted.map((inv) => inv.backendId || inv.displayId));
+            const merged = [...formatted];
+
+            pendingLocal.forEach((item) => {
+                const key = item.backendId || item.displayId;
+                if (!key || existingIds.has(key)) return;
+                const normalized = normalizeInvoiceStatus(item.status);
+                merged.unshift({
+                    backendId: item.backendId || item.displayId,
+                    displayId: item.displayId || item.backendId,
+                    client: item.client || 'Unknown Client',
+                    amount: Number(item.amount || 0),
+                    date: item.date || new Date().toLocaleDateString(),
+                    rawStatus: normalized.rawStatus,
+                    status: normalized.status
+                });
             });
 
             const computed = data.reduce((acc, inv) => {
@@ -146,8 +169,14 @@ export default function Sales() {
                 return acc;
             }, { totalRevenue: 0, pendingAmount: 0, overdueAmount: 0 });
 
-            setInvoices(formatted);
+            setInvoices(merged);
             setStats(computed);
+
+            if (pendingLocal.length > 0) {
+                const mergedIds = new Set(data.map((inv) => inv.id));
+                const remaining = pendingLocal.filter((item) => !item.backendId || !mergedIds.has(item.backendId));
+                localStorage.setItem(PENDING_SALES_INVOICES_KEY, JSON.stringify(remaining));
+            }
         } catch (error) {
             console.error('Failed to load invoices:', error);
             toast(error.message || 'Failed to load invoices', 'error');
@@ -206,17 +235,13 @@ try {
     const handleExport = () => {
         const header = ['invoice_id', 'client', 'date', 'amount', 'status'];
         const rows = filteredInvoices.map((inv) => [inv.displayId, inv.client, inv.date, inv.amount, inv.status]);
-        const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'invoices.csv';
-        a.click();
-        URL.revokeObjectURL(url);
-
-        toast('Invoices exported', 'success');
+        exportRowsToPdf({
+            title: 'Invoices Export',
+            headers: header,
+            rows,
+            filename: 'invoices.pdf'
+        });
+        toast('Invoices exported as PDF', 'success');
     };
 
     if (loading) {
@@ -234,7 +259,8 @@ try {
                     <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Sales & Invoices</h1>
                     <p className="text-slate-500 dark:text-slate-400">Manage your invoices and track payments.</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+                    <CurrencySelect />
                     <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
                         <Download className="w-4 h-4" />
                         Export
@@ -249,15 +275,15 @@ try {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-primary/5 border border-primary/10 p-6 rounded-xl">
                     <p className="text-primary font-medium text-sm mb-1">Total Revenue</p>
-                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">${stats.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
+                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">{formatCurrency(stats.totalRevenue)}</h3>
                 </div>
                 <div className="bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/10 p-6 rounded-xl">
                     <p className="text-amber-600 font-medium text-sm mb-1">Pending Amount</p>
-                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">${stats.pendingAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
+                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">{formatCurrency(stats.pendingAmount)}</h3>
                 </div>
                 <div className="bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/10 p-6 rounded-xl">
                     <p className="text-rose-600 font-medium text-sm mb-1">Overdue</p>
-                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">${stats.overdueAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h3>
+                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">{formatCurrency(stats.overdueAmount)}</h3>
                 </div>
             </div>
 
@@ -302,7 +328,7 @@ try {
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {filteredInvoices.map((invoice) => (
-                                <InvoiceRow key={invoice.backendId || invoice.displayId} invoice={invoice} onAction={handleQuickAction} actionLoadingId={actionLoadingId} />
+                                <InvoiceRow key={invoice.backendId || invoice.displayId} invoice={invoice} onAction={handleQuickAction} actionLoadingId={actionLoadingId} formatCurrency={formatCurrency} />
                             ))}
                             {filteredInvoices.length === 0 && (
                                 <tr>
@@ -320,9 +346,5 @@ try {
         </div>
     );
 }
-
-
-
-
 
 

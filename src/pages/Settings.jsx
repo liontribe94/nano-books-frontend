@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Loader2, Save, UserPlus, Shield, Users, Trash2, Building2, X } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Loader2, Save, UserPlus, Shield, Users, Trash2, Mail, Sparkles } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
@@ -36,12 +36,8 @@ export default function Settings() {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [savingOrg, setSavingOrg] = useState(false);
 
-    const [organization, setOrganization] = useState({ name: 'Organization', plan: 'free' });
-    const [orgForm, setOrgForm] = useState({ name: '', plan: 'free' });
-    const [showOrgModal, setShowOrgModal] = useState(false);
-    const [showInvitePanel, setShowInvitePanel] = useState(false);
+    const [organization, setOrganization] = useState({ name: 'NanoBooks Company', plan: 'free' });
 
     const [settings, setSettings] = useState({
         taxes: [{ name: 'Standard VAT', rate: 7.5, status: 'Active' }],
@@ -60,7 +56,16 @@ export default function Settings() {
         return Number(active?.rate || 0);
     }, [settings.taxes]);
 
-    const loadPage = async () => {
+    const pendingInvites = useMemo(
+        () => invitations.filter((invite) => (invite.status || '').toLowerCase() === 'pending').length,
+        [invitations]
+    );
+
+    const totalSeatsUsed = members.length + pendingInvites;
+    const seatLimit = organization.plan === 'enterprise' ? Infinity : organization.plan === 'pro' ? 5 : 1;
+    const seatsRemaining = seatLimit === Infinity ? 'Unlimited' : Math.max(seatLimit - totalSeatsUsed, 0);
+
+    const loadPage = useCallback(async () => {
         setLoading(true);
         try {
             const [orgRes, settingsRes, membersRes, invitesRes] = await Promise.all([
@@ -75,14 +80,11 @@ export default function Settings() {
             const team = unwrap(membersRes, []);
             const inv = unwrap(invitesRes, []);
 
-            const orgState = {
+            setOrganization({
                 id: org?.id,
-                name: org?.name || 'Organization',
+                name: org?.name || currentUser?.companyName || currentUser?.company_name || 'NanoBooks Company',
                 plan: org?.plan || 'free'
-            };
-
-            setOrganization(orgState);
-            setOrgForm({ name: orgState.name, plan: orgState.plan });
+            });
 
             setSettings((prev) => ({
                 ...prev,
@@ -99,11 +101,11 @@ export default function Settings() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [isAdmin, currentUser?.companyName, currentUser?.company_name, toast]);
 
     useEffect(() => {
         loadPage();
-    }, []);
+    }, [loadPage]);
 
     const handleSaveSettings = async () => {
         setSaving(true);
@@ -117,30 +119,15 @@ export default function Settings() {
         }
     };
 
-    const handleSaveOrganization = async (e) => {
-        e.preventDefault();
-        if (!isAdmin) return;
-
-        setSavingOrg(true);
-        try {
-            const res = await api.organization.upsert(orgForm);
-            const org = unwrap(res, null);
-            if (org) {
-                setOrganization({ id: org.id, name: org.name, plan: org.plan || 'free' });
-            }
-            setShowOrgModal(false);
-            toast('Organization saved successfully', 'success');
-        } catch (error) {
-            toast(error.message || 'Failed to save organization', 'error');
-        } finally {
-            setSavingOrg(false);
-        }
-    };
-
     const handleInvite = async (e) => {
         e.preventDefault();
         if (!isAdmin) {
             toast('Only admins can invite staff', 'warning');
+            return;
+        }
+
+        if (seatLimit !== Infinity && totalSeatsUsed >= seatLimit) {
+            toast('Seat limit reached for your current plan. Upgrade to add more staff.', 'warning');
             return;
         }
 
@@ -149,7 +136,9 @@ export default function Settings() {
             const res = await api.organization.invitations.create(inviteForm);
             const created = unwrap(res, null);
             setInviteForm({ email: '', role: 'viewer' });
-            setInvitations((prev) => [created, ...prev]);
+            if (created) {
+                setInvitations((prev) => [created, ...prev]);
+            }
             toast('Invitation sent successfully', 'success');
         } catch (error) {
             toast(error.message || 'Failed to send invitation', 'error');
@@ -209,24 +198,13 @@ export default function Settings() {
             <div className="flex flex-col sm:flex-row justify-between gap-4 sm:items-center">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Organization Settings</h1>
-                    <p className="text-sm text-slate-500">Manage company settings and team access.</p>
+                    <p className="text-sm text-slate-500">Manage staff access for your company workspace.</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     {isAdmin && (
-                        <>
-                            <button
-                                onClick={() => setShowOrgModal(true)}
-                                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
-                            >
-                                <Building2 className="w-4 h-4" /> Add Organization
-                            </button>
-                            <button
-                                onClick={() => setShowInvitePanel((prev) => !prev)}
-                                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
-                            >
-                                <UserPlus className="w-4 h-4" /> Add Team Member
-                            </button>
-                        </>
+                        <span className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 text-primary text-sm font-semibold">
+                            <Sparkles className="w-4 h-4" /> Team Access Controls
+                        </span>
                     )}
                     <button
                         onClick={handleSaveSettings}
@@ -242,23 +220,77 @@ export default function Settings() {
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
                     <Shield className="w-4 h-4 text-primary" />
-                    <h3 className="font-bold text-slate-800 dark:text-white">Organization</h3>
+                    <h3 className="font-bold text-slate-800 dark:text-white">Company Access</h3>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
                     <div>
-                        <p className="text-slate-500">Name</p>
+                        <p className="text-slate-500">Company Name</p>
                         <p className="font-semibold text-slate-800 dark:text-slate-200">{organization.name}</p>
                     </div>
                     <div>
-                        <p className="text-slate-500">Plan</p>
+                        <p className="text-slate-500">Plan Tier</p>
                         <p className="font-semibold uppercase text-slate-800 dark:text-slate-200">{organization.plan}</p>
+                    </div>
+                    <div>
+                        <p className="text-slate-500">Seats Used</p>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200">
+                            {totalSeatsUsed}
+                            {seatLimit !== Infinity ? ` / ${seatLimit}` : ' / Unlimited'}
+                        </p>
+                    </div>
+                    <div>
+                        <p className="text-slate-500">Seats Remaining</p>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200">{seatsRemaining}</p>
                     </div>
                     <div>
                         <p className="text-slate-500">Default Tax</p>
                         <p className="font-semibold text-slate-800 dark:text-slate-200">{defaultTax}%</p>
                     </div>
                 </div>
+                <p className="mt-4 text-xs text-slate-500">
+                    Add staff below to give access to this app. Team size depends on your paid user seats.
+                </p>
             </div>
+
+            {isAdmin && (
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Mail className="w-4 h-4 text-primary" />
+                        <h3 className="font-bold text-slate-800 dark:text-white">Add Staff Access</h3>
+                    </div>
+                    <form onSubmit={handleInvite} className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <input
+                            type="email"
+                            required
+                            placeholder="staff@yourcompany.com"
+                            value={inviteForm.email}
+                            onChange={(e) => setInviteForm((prev) => ({ ...prev, email: e.target.value }))}
+                            className="md:col-span-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                        />
+                        <select
+                            value={inviteForm.role}
+                            onChange={(e) => setInviteForm((prev) => ({ ...prev, role: e.target.value }))}
+                            className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                        >
+                            {ROLES.map((role) => (
+                                <option key={role} value={role}>{role}</option>
+                            ))}
+                        </select>
+                        <button
+                            type="submit"
+                            disabled={inviteLoading || (seatLimit !== Infinity && totalSeatsUsed >= seatLimit)}
+                            className="px-3 py-2 rounded-lg bg-primary text-white font-medium disabled:opacity-70"
+                        >
+                            {inviteLoading ? 'Sending...' : 'Send Invite'}
+                        </button>
+                    </form>
+                    {seatLimit !== Infinity && totalSeatsUsed >= seatLimit && (
+                        <p className="mt-3 text-xs text-amber-600">
+                            Seat limit reached for your current plan. Upgrade your plan to add more staff.
+                        </p>
+                    )}
+                </div>
+            )}
 
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
@@ -321,130 +353,48 @@ export default function Settings() {
                 </div>
             </div>
 
-            {isAdmin && showInvitePanel && (
-                <>
-                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                        <div className="flex items-center gap-2 mb-4">
-                            <UserPlus className="w-4 h-4 text-primary" />
-                            <h3 className="font-bold text-slate-800 dark:text-white">Invite Team Member</h3>
-                        </div>
-
-                        <form onSubmit={handleInvite} className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                            <input
-                                type="email"
-                                required
-                                placeholder="name@company.com"
-                                value={inviteForm.email}
-                                onChange={(e) => setInviteForm((prev) => ({ ...prev, email: e.target.value }))}
-                                className="md:col-span-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                            />
-                            <select
-                                value={inviteForm.role}
-                                onChange={(e) => setInviteForm((prev) => ({ ...prev, role: e.target.value }))}
-                                className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                            >
-                                {ROLES.map((role) => (
-                                    <option key={role} value={role}>{role}</option>
-                                ))}
-                            </select>
-                            <button
-                                type="submit"
-                                disabled={inviteLoading}
-                                className="px-3 py-2 rounded-lg bg-primary text-white font-medium disabled:opacity-70"
-                            >
-                                {inviteLoading ? 'Sending...' : 'Send Invite'}
-                            </button>
-                        </form>
-                    </div>
-
-                    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                        <h3 className="font-bold text-slate-800 dark:text-white mb-4">Invitations</h3>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className="text-left text-slate-500 border-b border-slate-200 dark:border-slate-800">
-                                    <tr>
-                                        <th className="py-3 pr-4">Email</th>
-                                        <th className="py-3 pr-4">Role</th>
-                                        <th className="py-3 pr-4">Status</th>
-                                        <th className="py-3 pr-4">Created</th>
-                                        <th className="py-3 text-right">Actions</th>
+            {isAdmin && (
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                    <h3 className="font-bold text-slate-800 dark:text-white mb-4">Invitations</h3>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead className="text-left text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                                <tr>
+                                    <th className="py-3 pr-4">Email</th>
+                                    <th className="py-3 pr-4">Role</th>
+                                    <th className="py-3 pr-4">Status</th>
+                                    <th className="py-3 pr-4">Created</th>
+                                    <th className="py-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {invitations.map((invite) => (
+                                    <tr key={invite.id} className="border-b border-slate-100 dark:border-slate-800">
+                                        <td className="py-3 pr-4 text-slate-700 dark:text-slate-300">{invite.email}</td>
+                                        <td className="py-3 pr-4"><RoleBadge role={invite.role} /></td>
+                                        <td className="py-3 pr-4 text-xs uppercase font-bold text-slate-500">{invite.status}</td>
+                                        <td className="py-3 pr-4 text-slate-500">{invite.createdAt ? new Date(invite.createdAt).toLocaleString() : '-'}</td>
+                                        <td className="py-3 text-right">
+                                            {(invite.status || '').toLowerCase() === 'pending' && (
+                                                <button
+                                                    onClick={() => handleRevokeInvite(invite.id)}
+                                                    className="text-xs text-rose-500 hover:text-rose-600"
+                                                >
+                                                    Revoke
+                                                </button>
+                                            )}
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {invitations.map((invite) => (
-                                        <tr key={invite.id} className="border-b border-slate-100 dark:border-slate-800">
-                                            <td className="py-3 pr-4 text-slate-700 dark:text-slate-300">{invite.email}</td>
-                                            <td className="py-3 pr-4"><RoleBadge role={invite.role} /></td>
-                                            <td className="py-3 pr-4 text-xs uppercase font-bold text-slate-500">{invite.status}</td>
-                                            <td className="py-3 pr-4 text-slate-500">{invite.createdAt ? new Date(invite.createdAt).toLocaleString() : '-'}</td>
-                                            <td className="py-3 text-right">
-                                                {invite.status === 'pending' && (
-                                                    <button
-                                                        onClick={() => handleRevokeInvite(invite.id)}
-                                                        className="text-xs text-rose-500 hover:text-rose-600"
-                                                    >
-                                                        Revoke
-                                                    </button>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
-                </>
+                </div>
             )}
 
             {!isAdmin && (
                 <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl px-4 py-3 text-sm">
                     You are signed in as <b>{currentRole}</b>. Team management is restricted to organization admins.
-                </div>
-            )}
-
-            {showOrgModal && isAdmin && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/40" onClick={() => setShowOrgModal(false)} />
-                    <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-slate-800 dark:text-white">Add Organization</h3>
-                            <button onClick={() => setShowOrgModal(false)} className="text-slate-400 hover:text-slate-600">
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleSaveOrganization} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Organization Name</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={orgForm.name}
-                                    onChange={(e) => setOrgForm((prev) => ({ ...prev, name: e.target.value }))}
-                                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Plan</label>
-                                <select
-                                    value={orgForm.plan}
-                                    onChange={(e) => setOrgForm((prev) => ({ ...prev, plan: e.target.value }))}
-                                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                                >
-                                    <option value="free">Free</option>
-                                    <option value="pro">Pro</option>
-                                    <option value="enterprise">Enterprise</option>
-                                </select>
-                            </div>
-                            <button
-                                type="submit"
-                                disabled={savingOrg}
-                                className="w-full px-4 py-2 rounded-lg bg-primary text-white font-medium disabled:opacity-70"
-                            >
-                                {savingOrg ? 'Saving...' : 'Save Organization'}
-                            </button>
-                        </form>
-                    </div>
                 </div>
             )}
         </div>

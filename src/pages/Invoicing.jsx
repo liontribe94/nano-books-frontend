@@ -24,6 +24,8 @@ import {
     MapPin
 } from 'lucide-react';
 
+const PENDING_SALES_INVOICES_KEY = 'nanobooks_pending_sales_invoices';
+
 /* ─── Stepper ─── */
 const steps = ['Customer Selection', 'Line Items', 'Review & Settings'];
 
@@ -317,7 +319,7 @@ const LineItemRow = ({ item, onChange, onRemove, products, formatCurrency }) => 
 export default function Invoicing() {
     const navigate = useNavigate();
     const toast = useToast();
-    const { currency, setCurrency, formatCurrency } = useAuth();
+    const { user, currency, setCurrency, formatCurrency } = useAuth();
     const [step, setStep] = useState(0);
     const [showAddCustomer, setShowAddCustomer] = useState(false);
     const [customers, setCustomers] = useState([]);
@@ -337,6 +339,16 @@ export default function Invoicing() {
 
     const [submitting, setSubmitting] = useState(false);
     const [inventoryProducts, setInventoryProducts] = useState([]);
+
+    const companyNameFromUser =
+        user?.companyName ||
+        user?.company_name ||
+        user?.company ||
+        user?.organizationName ||
+        user?.organization_name ||
+        user?.organization?.name ||
+        '';
+    const displayCompanyName = companyNameFromUser || 'NanoBooks';
 
     // Fetch customers and products on mount
     useEffect(() => {
@@ -381,8 +393,23 @@ export default function Invoicing() {
         selectCustomer(created);
     };
 
-    const subtotal = lineItems.reduce((acc, item) => acc + (item.qty * parseFloat(item.rate.replace(/[^0-9.-]+/g, "")) || 0), 0);
-    const taxAmount = subtotal * 0.1;
+    const lineItemsWithTotals = lineItems.map((item) => {
+        const qty = Number(item.qty) || 0;
+        const rate = typeof item.rate === 'string' ? parseFloat(item.rate.replace(/[^0-9.-]+/g, "")) || 0 : Number(item.rate || 0);
+        const taxRate = Number(item.tax) || 0;
+        const lineSubtotal = qty * rate;
+        const lineTax = lineSubtotal * (taxRate / 100);
+        return {
+            ...item,
+            lineSubtotal,
+            lineTax,
+            computedAmount: lineSubtotal + lineTax
+        };
+    });
+
+    const subtotal = lineItemsWithTotals.reduce((acc, item) => acc + item.lineSubtotal, 0);
+    const taxAmount = lineItemsWithTotals.reduce((acc, item) => acc + item.lineTax, 0);
+    const effectiveTaxRate = subtotal > 0 ? (taxAmount / subtotal) * 100 : 0;
     const discount = 0.00;
     const total = subtotal + taxAmount - discount;
 
@@ -390,7 +417,10 @@ export default function Invoicing() {
         const copy = [...lineItems];
         copy[idx] = newItem;
         // Auto-calculate amount
-        copy[idx].amount = (newItem.qty * parseFloat(newItem.rate.replace(/[^0-9.-]+/g, "")) || 0) * (1 + newItem.tax / 100);
+        const qty = Number(newItem.qty) || 0;
+        const rate = typeof newItem.rate === 'string' ? parseFloat(newItem.rate.replace(/[^0-9.-]+/g, "")) || 0 : Number(newItem.rate || 0);
+        const taxRate = Number(newItem.tax) || 0;
+        copy[idx].amount = (qty * rate) * (1 + taxRate / 100);
         setLineItems(copy);
     };
 
@@ -444,6 +474,17 @@ export default function Invoicing() {
 
             const res = await api.invoices.create(invoiceData);
             const createdInvoice = res?.data || res;
+
+            const pendingLocal = JSON.parse(localStorage.getItem(PENDING_SALES_INVOICES_KEY) || '[]');
+            const localInvoice = {
+                backendId: createdInvoice?.id || null,
+                displayId: createdInvoice?.invoice_number || invoiceData.invoiceNumber,
+                client: customer.name,
+                amount: total,
+                status: createdInvoice?.status === 'paid' ? 'paid' : 'pending',
+                date: new Date(invoiceData.issueDate).toLocaleDateString()
+            };
+            localStorage.setItem(PENDING_SALES_INVOICES_KEY, JSON.stringify([localInvoice, ...pendingLocal].slice(0, 30)));
 
             if (createdInvoice && createdInvoice.id) {
                 await api.invoices.send(createdInvoice.id);
@@ -707,9 +748,9 @@ export default function Invoicing() {
                 </div>
 
                 {/* Live Preview (2 cols) */}
-                <div className="lg:col-span-2">
-                    <div className="sticky top-4">
-                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="lg:col-span-2 min-w-0">
+                    <div className="sticky top-4 min-w-0">
+                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden min-w-0">
                             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Live Preview</span>
                                 <div className="flex gap-2">
@@ -719,17 +760,17 @@ export default function Invoicing() {
                             </div>
 
                             {/* Invoice Preview */}
-                            <div className="p-8 bg-slate-50 dark:bg-slate-800/30">
-                                <div className="bg-white dark:bg-slate-900 rounded-lg shadow-lg p-8 max-w-sm mx-auto border border-slate-100 dark:border-slate-700">
+                            <div className="p-4 sm:p-6 bg-slate-50 dark:bg-slate-800/30 overflow-x-hidden">
+                                <div className="bg-white dark:bg-slate-900 rounded-lg shadow-lg p-4 sm:p-8 w-full max-w-sm mx-auto border border-slate-100 dark:border-slate-700 min-w-0 overflow-hidden">
                                     {/* Preview Header */}
-                                    <div className="flex justify-between items-start mb-6">
-                                        <div className="flex items-center gap-2">
+                                    <div className="flex justify-between items-start gap-3 mb-6 min-w-0">
+                                        <div className="flex items-center gap-2 min-w-0">
                                             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                                                 <FileText className="w-4 h-4 text-white" />
                                             </div>
-                                            <span className="font-bold text-xs text-slate-800 dark:text-white">LEGABLY INC.</span>
+                                            <span className="font-bold text-xs text-slate-800 dark:text-white break-words">{displayCompanyName}</span>
                                         </div>
-                                        <div className="text-right">
+                                        <div className="text-right shrink-0">
                                             <p className="text-[10px] uppercase text-slate-400 font-bold tracking-widest">Invoice</p>
                                             <p className="text-[10px] text-slate-500 mt-0.5">#INV-2023-004</p>
                                             <p className="text-[10px] text-slate-500">Oct 24, 2023</p>
@@ -737,14 +778,14 @@ export default function Invoicing() {
                                     </div>
 
                                     {/* Preview Bill To */}
-                                    <div className="flex justify-between mb-6">
-                                        <div>
+                                    <div className="flex justify-between gap-3 mb-6 min-w-0">
+                                        <div className="min-w-0">
                                             <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider mb-1">Bill To</p>
-                                            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">{customer.name || 'Customer Name'}</p>
-                                            <p className="text-[10px] text-slate-400 leading-relaxed max-w-[150px] overflow-hidden whitespace-normal">{customer.address || customer.email || 'Address pending...'}</p>
+                                            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 break-words">{customer.name || 'Customer Name'}</p>
+                                            <p className="text-[10px] text-slate-400 leading-relaxed break-words">{customer.address || customer.email || 'Address pending...'}</p>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-xl font-bold text-primary">{formatCurrency(total)}</p>
+                                        <div className="text-right shrink-0 max-w-[45%]">
+                                            <p className="text-lg sm:text-xl font-bold text-primary break-all">{formatCurrency(total)}</p>
                                         </div>
                                     </div>
 
@@ -755,14 +796,14 @@ export default function Invoicing() {
                                             <span className="w-10 text-center">Qty</span>
                                             <span className="w-16 text-right">Amount</span>
                                         </div>
-                                        {lineItems.filter(i => i.description || i.amount > 0).map((item, idx) => (
-                                            <div key={idx} className="flex items-start text-[11px] py-2 border-b border-dashed border-slate-100 dark:border-slate-700">
-                                                <span className="flex-1 text-slate-700 dark:text-slate-300 leading-snug break-words pr-2">{item.description || 'New Item'}</span>
+                                        {lineItemsWithTotals.filter(i => i.description || i.computedAmount > 0).map((item, idx) => (
+                                            <div key={idx} className="flex items-start text-[11px] py-2 border-b border-dashed border-slate-100 dark:border-slate-700 min-w-0">
+                                                <span className="flex-1 min-w-0 text-slate-700 dark:text-slate-300 leading-snug break-words pr-2">{item.description || 'New Item'}</span>
                                                 <span className="w-10 text-center text-slate-500 shrink-0">{item.qty}</span>
-                                                <span className="w-16 text-right font-semibold text-slate-800 dark:text-slate-200 shrink-0">{formatCurrency(item.amount)}</span>
+                                                <span className="w-16 text-right font-semibold text-slate-800 dark:text-slate-200 shrink-0 break-all">{formatCurrency(item.computedAmount)}</span>
                                             </div>
                                         ))}
-                                        {lineItems.filter(i => i.description || i.amount > 0).length === 0 && (
+                                        {lineItemsWithTotals.filter(i => i.description || i.computedAmount > 0).length === 0 && (
                                             <div className="flex items-start text-[11px] py-2 border-b border-dashed border-slate-100 dark:border-slate-700">
                                                 <span className="flex-1 text-slate-400 italic">No items added</span>
                                             </div>
@@ -771,21 +812,21 @@ export default function Invoicing() {
 
                                     {/* Preview Totals */}
                                     <div className="space-y-1 text-[11px]">
-                                        <div className="flex justify-between text-slate-500">
+                                        <div className="flex justify-between gap-2 text-slate-500">
                                             <span>PAYMENT METHOD</span>
-                                            <span>Bank Transfer</span>
+                                            <span className="text-right break-words">Bank Transfer</span>
                                         </div>
-                                        <div className="flex justify-between text-slate-500">
+                                        <div className="flex justify-between gap-2 text-slate-500">
                                             <span>Sub Total</span>
-                                            <span>{formatCurrency(subtotal)}</span>
+                                            <span className="text-right break-all">{formatCurrency(subtotal)}</span>
                                         </div>
-                                        <div className="flex justify-between text-slate-500">
-                                            <span>+Tax (10%)</span>
-                                            <span>{formatCurrency(taxAmount)}</span>
+                                        <div className="flex justify-between gap-2 text-slate-500">
+                                            <span>+Tax ({effectiveTaxRate.toFixed(2)}%)</span>
+                                            <span className="text-right break-all">{formatCurrency(taxAmount)}</span>
                                         </div>
-                                        <div className="flex justify-between font-bold text-slate-800 dark:text-white pt-2 border-t border-slate-100 dark:border-slate-700 mt-2">
+                                        <div className="flex justify-between gap-2 font-bold text-slate-800 dark:text-white pt-2 border-t border-slate-100 dark:border-slate-700 mt-2">
                                             <span>Grand Total</span>
-                                            <span className="text-primary">{formatCurrency(total)}</span>
+                                            <span className="text-primary text-right break-all">{formatCurrency(total)}</span>
                                         </div>
                                     </div>
                                 </div>

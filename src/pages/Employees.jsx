@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui/Toast';
 import { api } from '../lib/api';
+import { exportRowsToPdf } from '../lib/pdfExport';
 import {
   Users,
   UserCheck,
@@ -103,7 +104,10 @@ export default function EmployeesDashboard() {
   }, [statusFilter]);
 
   const activeCount = employees.filter((e) => (e.status || '').toLowerCase() === 'active').length;
-  const leaveCount = employees.filter((e) => (e.status || '').toLowerCase().includes('leave')).length;
+  const leaveCount = employees.filter((e) => {
+    const normalized = (e.status || '').toLowerCase().replace(/\s+/g, '_');
+    return normalized.includes('leave') || normalized === 'inactive';
+  }).length;
 
   const statusStyle = (status) => {
     if ((status || '').toLowerCase() === 'active') return 'bg-green-100 text-green-600';
@@ -166,22 +170,13 @@ export default function EmployeesDashboard() {
       return;
     }
 
-    const isOnLeave = (employee.status || '').toLowerCase().includes('leave');
-    const nextStatusApi = isOnLeave ? 'active' : 'on_leave';
-    const nextStatusLabel = formatStatusLabel(nextStatusApi);
+    const isOnLeave = (employee.status || '').toLowerCase().includes('leave') || (employee.status || '').toLowerCase() === 'inactive';
+    const nextStatusApi = isOnLeave ? 'ACTIVE' : 'INACTIVE';
+    const nextStatusLabel = isOnLeave ? 'Active' : 'On Leave';
 
     setBusyAction(`status-${employee.id}`);
     try {
-      try {
-        await api.employees.update(employee.id, { status: nextStatusApi });
-      } catch (primaryError) {
-        const primaryMsg = (primaryError.message || '').toLowerCase();
-        if (!primaryMsg.includes('bad request') && !primaryMsg.includes('invalid')) {
-          throw primaryError;
-        }
-        const fallbackStatus = isOnLeave ? 'Active' : 'On Leave';
-        await api.employees.update(employee.id, { status: fallbackStatus });
-      }
+      await api.employees.update(employee.id, { status: nextStatusApi });
 
       setEmployees((prev) =>
         prev.map((emp) =>
@@ -200,16 +195,13 @@ export default function EmployeesDashboard() {
     setBusyAction('export');
     const header = ['name', 'email', 'role', 'department', 'status'];
     const rows = filteredEmployees.map((e) => [e.name, e.email, e.role, e.department, e.status]);
-    const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'employees.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-    toast('Employees exported', 'success');
+    exportRowsToPdf({
+      title: 'Employees Export',
+      headers: header,
+      rows,
+      filename: 'employees.pdf'
+    });
+    toast('Employees exported as PDF', 'success');
     setBusyAction('');
   };
 
