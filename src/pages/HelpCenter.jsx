@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
     Search,
     Book,
@@ -53,40 +53,85 @@ const FAQItem = ({ question, answer }) => {
 
 export default function HelpCenter() {
     const [searchQuery, setSearchQuery] = useState('');
+    const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL || 'support@nanobooks.com';
+    const liveChatEmailSubject = encodeURIComponent(
+        import.meta.env.VITE_SUPPORT_LIVECHAT_EMAIL_SUBJECT || 'Live Chat Request'
+    );
+    const supportEmailSubject = encodeURIComponent(
+        import.meta.env.VITE_SUPPORT_EMAIL_SUBJECT || 'Support Request'
+    );
+    const helpCenterEmailSubject = encodeURIComponent(
+        import.meta.env.VITE_SUPPORT_HELPCENTER_EMAIL_SUBJECT || 'Help Center Question'
+    );
+    const supportEmailBody = encodeURIComponent(
+        import.meta.env.VITE_SUPPORT_EMAIL_BODY || 'Hello Support,'
+    );
+    const encodedSupportEmail = encodeURIComponent(supportEmail);
+    const liveChatGmailLink = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodedSupportEmail}&su=${liveChatEmailSubject}&body=${supportEmailBody}`;
+    const supportGmailLink = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodedSupportEmail}&su=${supportEmailSubject}&body=${supportEmailBody}`;
+    const helpCenterGmailLink = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodedSupportEmail}&su=${helpCenterEmailSubject}&body=${supportEmailBody}`;
+    const whatsappNumber = (import.meta.env.VITE_SUPPORT_WHATSAPP_NUMBER || '').replace(/[^\d]/g, '');
+    const whatsappPrefill = encodeURIComponent(
+        import.meta.env.VITE_SUPPORT_WHATSAPP_TEXT || 'Hello NanoBooks support, I need help with my account.'
+    );
+    const whatsappLink = whatsappNumber
+        ? `https://wa.me/${whatsappNumber}?text=${whatsappPrefill}`
+        : `https://wa.me/?text=${whatsappPrefill}`;
+    const hasWhatsAppNumber = Boolean(whatsappNumber);
+
+    const handleStartChat = () => {
+        if (hasWhatsAppNumber) {
+            window.open(whatsappLink, '_blank', 'noopener,noreferrer');
+            return;
+        }
+        window.open(liveChatGmailLink, '_blank', 'noopener,noreferrer');
+    };
 
     const categories = [
-        { icon: Rocket, title: 'Getting Started', description: 'Learn the basics of Nano Books and set up your account.', count: 12 },
-        { icon: FileText, title: 'Invoicing & Sales', description: 'How to create, send, and manage your invoices.', count: 24 },
-        { icon: CreditCard, title: 'Payments & Banking', description: 'Connect your bank accounts and reconcile transactions.', count: 18 },
-        { icon: Zap, title: 'Payroll & Employees', description: 'Manage employee profiles and process payroll runs.', count: 15 },
-        { icon: Shield, title: 'Security & Privacy', description: 'Configure MFA, permissions and data security.', count: 8 },
-        { icon: HelpCircle, title: 'Troubleshooting', description: 'Common issues and how to resolve them quickly.', count: 21 },
+        { icon: Rocket, title: 'Getting Started', description: 'Create your account, set company details, and access your dashboard.', count: 8 },
+        { icon: FileText, title: 'Invoicing & Sales', description: 'Create invoices, apply tax per line item, and track them in Sales.', count: 14 },
+        { icon: CreditCard, title: 'Banking & Expenses', description: 'Connect banking providers, review accounts, and manage expenses.', count: 10 },
+        { icon: Zap, title: 'Employees & Payroll', description: 'Add staff, update leave status, and process payroll records.', count: 11 },
+        { icon: Shield, title: 'Team Access & Roles', description: 'Invite team members, assign roles, and manage organization access.', count: 7 },
+        { icon: HelpCircle, title: 'Troubleshooting', description: 'Fix common API, form validation, and mobile layout issues.', count: 13 },
     ];
 
     const faqs = [
         {
-            question: "How do I connect my bank account?",
-            answer: "Go to the Banking page and click 'Add Bank Account'. You'll be prompted to select your provider via Plaid or use manual import. Once connected, your transactions will sync automatically every 24 hours."
+            question: 'How do I connect my bank account?',
+            answer: 'Open the Banking page and use the connect flow to link your provider. Once connected, your account and transactions load in the Banking dashboard.'
         },
         {
-            question: "Can I customize the invoice template?",
-            answer: "Yes! In the Invoicing page, click on 'Edit Template Design'. You can upload your logo, change brand colors, and choose from multiple layout options to match your company's identity."
+            question: 'Does my company name appear on invoice preview?',
+            answer: 'Yes. Invoice preview shows your signed-in company name from profile or organization data instead of dummy text.'
         },
         {
-            question: "How is payroll calculated?",
-            answer: "Payroll is calculated based on the gross salary, tax rates, and deductions specified in the Employee Profile. Our system automatically updates tax tables to ensure compliance with the latest regulations."
+            question: 'How is payroll calculated?',
+            answer: 'Payroll uses employee salary records and your payroll workflow in the Payroll page. You can review totals and submit payroll cycles from there.'
         },
         {
-            question: "What file formats can I export?",
-            answer: "You can export reports and tables as PDF. Look for the 'Export' or 'Download' button at the top right of any page."
+            question: 'What file formats can I export?',
+            answer: 'Export actions in the app generate PDF files. Use the Export button on supported pages to download a PDF copy.'
+        },
+        {
+            question: 'How do I add staff who can log into the app?',
+            answer: 'Go to Settings, open Team Access, and send invites from Add Staff Access. Invited users can join with their email and assigned role.'
+        },
+        {
+            question: 'Why do I get 400 Bad Request on some actions?',
+            answer: 'A 400 error usually means the request has missing required values or unsupported fields. Check the browser console error text and align frontend fields with backend validation.'
         }
     ];
 
+    const filteredFaqs = faqs.filter((faq) => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return faq.question.toLowerCase().includes(q) || faq.answer.toLowerCase().includes(q);
+    });
+
     return (
         <div className="flex flex-col gap-10 pb-16">
-            {/* ── Hero Search Section ── */}
             <div className="relative overflow-hidden rounded-[2rem] bg-slate-900 border border-slate-800 p-10 lg:p-16 flex flex-col items-center text-center">
-                {/* Background Decoration */}
                 <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/20 blur-[100px] -mr-40 -mt-40"></div>
                 <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-blue-500/10 blur-[80px] -ml-20 -mb-20"></div>
 
@@ -109,7 +154,7 @@ export default function HelpCenter() {
                     </div>
                     <div className="flex flex-wrap justify-center gap-2 mt-6">
                         <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Popular:</span>
-                        {['Connecting Bank', 'Invoice Templates', 'Tax Forms', 'Payroll Run'].map(tag => (
+                        {['Connect Banking', 'Create Invoice', 'Add Employee', 'Send Invite'].map((tag) => (
                             <button
                                 key={tag}
                                 onClick={() => setSearchQuery(tag)}
@@ -122,7 +167,6 @@ export default function HelpCenter() {
                 </div>
             </div>
 
-            {/* ── Help Categories ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {categories.map((cat, i) => (
                     <CategoryCard key={i} {...cat} />
@@ -130,7 +174,6 @@ export default function HelpCenter() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                {/* ── FAQ Section ── */}
                 <div className="lg:col-span-2">
                     <div className="flex items-center gap-3 mb-8">
                         <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
@@ -139,46 +182,52 @@ export default function HelpCenter() {
                         <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Frequent Questions</h2>
                     </div>
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-sm">
-                        {faqs.map((faq, i) => (
+                        {filteredFaqs.map((faq, i) => (
                             <FAQItem key={i} {...faq} />
                         ))}
+                        {!filteredFaqs.length && (
+                            <div className="py-6 text-sm text-slate-500">
+                                No matching articles found. Try keywords like "invoice", "employee", "banking", or "invite".
+                            </div>
+                        )}
                         <button className="w-full mt-6 py-3 text-sm font-bold text-primary hover:underline">
                             View all FAQs
                         </button>
                     </div>
                 </div>
 
-                {/* ── Contact Support Sidebar ── */}
                 <div className="flex flex-col gap-6">
                     <div className="bg-gradient-to-br from-primary to-blue-600 rounded-[2rem] p-8 text-white shadow-xl shadow-primary/20 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-500"></div>
                         <h3 className="text-xl font-bold mb-2">Need more help?</h3>
                         <p className="text-white/80 text-sm mb-8 leading-relaxed">
-                            Our support specialists are typically available Mon-Fri, 9am - 6pm EST.
+                            Our support team helps with invoicing, banking, employees, payroll, and account access issues.
                         </p>
 
                         <div className="space-y-3">
                             <button
-                                onClick={() => window.open('mailto:support@nanobooks.com?subject=Live%20Chat%20Request', '_blank')}
+                                onClick={handleStartChat}
                                 className="w-full flex items-center justify-center gap-3 py-3.5 bg-white text-primary rounded-xl font-bold hover:bg-slate-50 transition-all shadow-lg"
                             >
                                 <MessageCircle className="w-5 h-5" />
-                                Start Live Chat
+                                Start WhatsApp Chat
                             </button>
-                            <button
-                                onClick={() => window.open('mailto:support@nanobooks.com?subject=Support%20Request', '_blank')}
+                            <a
+                                href={supportGmailLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="w-full flex items-center justify-center gap-3 py-3.5 bg-primary/20 border border-white/20 text-white rounded-xl font-bold hover:bg-white/10 transition-all"
                             >
                                 <Mail className="w-5 h-5" />
                                 Send an Email
-                            </button>
+                            </a>
                         </div>
                     </div>
 
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-8 shadow-sm">
                         <h4 className="font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
                             <Users className="w-5 h-5 text-slate-400" />
-                            Community
+                            Resources
                         </h4>
                         <div className="space-y-6">
                             <div className="flex items-start gap-4">
@@ -186,8 +235,8 @@ export default function HelpCenter() {
                                     <Book className="w-5 h-5 text-slate-500" />
                                 </div>
                                 <div>
-                                    <h5 className="text-sm font-bold text-slate-800 dark:text-white">Developer API</h5>
-                                    <p className="text-xs text-slate-500 mt-1">Read our API docs and integrate with ease.</p>
+                                    <h5 className="text-sm font-bold text-slate-800 dark:text-white">Product Guides</h5>
+                                    <p className="text-xs text-slate-500 mt-1">Step-by-step help for each page in the app.</p>
                                 </div>
                             </div>
                             <div className="flex items-start gap-4">
@@ -195,33 +244,32 @@ export default function HelpCenter() {
                                     <Users className="w-5 h-5 text-slate-500" />
                                 </div>
                                 <div>
-                                    <h5 className="text-sm font-bold text-slate-800 dark:text-white">Nano Forum</h5>
-                                    <p className="text-xs text-slate-500 mt-1">Join the conversation with other professionals.</p>
+                                    <h5 className="text-sm font-bold text-slate-800 dark:text-white">Team Admin Tips</h5>
+                                    <p className="text-xs text-slate-500 mt-1">Learn how to invite staff and manage user roles.</p>
                                 </div>
                             </div>
                         </div>
-                        <button
-                            onClick={() => window.open('https://github.com', '_blank')}
-                            className="w-full mt-8 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        <a
+                            href={helpCenterGmailLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full mt-8 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-center block"
                         >
-                            Visit Community
-                        </button>
+                            Contact Support
+                        </a>
                     </div>
                 </div>
             </div>
 
-            {/* ── Footer ── */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-10 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400">
-                <p>© 2024 Nano Books Support. Made for professionals.</p>
+                <p>© 2026 NanoBooks Support. Made for professionals.</p>
                 <div className="flex gap-6">
                     <a href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</a>
                     <a href="/terms" className="hover:text-primary transition-colors">Terms of Service</a>
-                    <a href="mailto:support@nanobooks.com" className="hover:text-primary transition-colors">Contact Us</a>
+                    <a href={supportGmailLink} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Contact Us</a>
                 </div>
             </div>
         </div>
     );
 }
-
-
 

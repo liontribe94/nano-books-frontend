@@ -51,11 +51,6 @@ export default function Settings() {
     const [inviteLoading, setInviteLoading] = useState(false);
     const [inviteForm, setInviteForm] = useState({ email: '', role: 'viewer' });
 
-    const defaultTax = useMemo(() => {
-        const active = settings.taxes.find((t) => (t.status || '').toLowerCase() === 'active') || settings.taxes[0];
-        return Number(active?.rate || 0);
-    }, [settings.taxes]);
-
     const pendingInvites = useMemo(
         () => invitations.filter((invite) => (invite.status || '').toLowerCase() === 'pending').length,
         [invitations]
@@ -222,7 +217,7 @@ export default function Settings() {
                     <Shield className="w-4 h-4 text-primary" />
                     <h3 className="font-bold text-slate-800 dark:text-white">Company Access</h3>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                     <div>
                         <p className="text-slate-500">Company Name</p>
                         <p className="font-semibold text-slate-800 dark:text-slate-200">{organization.name}</p>
@@ -241,10 +236,6 @@ export default function Settings() {
                     <div>
                         <p className="text-slate-500">Seats Remaining</p>
                         <p className="font-semibold text-slate-800 dark:text-slate-200">{seatsRemaining}</p>
-                    </div>
-                    <div>
-                        <p className="text-slate-500">Default Tax</p>
-                        <p className="font-semibold text-slate-800 dark:text-slate-200">{defaultTax}%</p>
                     </div>
                 </div>
                 <p className="mt-4 text-xs text-slate-500">
