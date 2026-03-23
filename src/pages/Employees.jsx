@@ -151,6 +151,31 @@ export default function EmployeesDashboard() {
     }
   };
 
+  const handleToggleLeaveStatus = async (employee) => {
+    if (usingTeamFallback) {
+      toast('Leave status update requires the employees table in backend.', 'warning');
+      return;
+    }
+
+    const isOnLeave = (employee.status || '').toLowerCase().includes('leave');
+    const nextStatus = isOnLeave ? 'Active' : 'On Leave';
+
+    setBusyAction(`status-${employee.id}`);
+    try {
+      await api.employees.update(employee.id, { status: nextStatus });
+      setEmployees((prev) =>
+        prev.map((emp) =>
+          emp.id === employee.id ? { ...emp, status: nextStatus } : emp
+        )
+      );
+      toast(`Status updated to ${nextStatus}`, 'success');
+    } catch (error) {
+      toast(error.message || 'Failed to update leave status', 'error');
+    } finally {
+      setBusyAction('');
+    }
+  };
+
   const handleExport = () => {
     setBusyAction('export');
     const header = ['name', 'email', 'role', 'department', 'status'];
@@ -275,6 +300,19 @@ export default function EmployeesDashboard() {
                 </span>
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={() => handleToggleLeaveStatus(emp)}
+                    disabled={busyAction === `status-${emp.id}`}
+                    className="px-2.5 py-1.5 rounded border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+                  >
+                    {busyAction === `status-${emp.id}` ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (emp.status || '').toLowerCase().includes('leave') ? (
+                      'Set Active'
+                    ) : (
+                      'Mark Leave'
+                    )}
+                  </button>
+                  <button
                     onClick={() => {
                       if (usingTeamFallback) {
                         toast('Employee profile is unavailable until employees table is created.', 'warning');
@@ -332,7 +370,20 @@ export default function EmployeesDashboard() {
                     </span>
                   </td>
 
-                  <td className="flex gap-2 justify-center">
+                  <td className="flex gap-2 justify-center items-center">
+                    <button
+                      onClick={() => handleToggleLeaveStatus(emp)}
+                      disabled={busyAction === `status-${emp.id}`}
+                      className="px-2.5 py-1.5 rounded border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+                    >
+                      {busyAction === `status-${emp.id}` ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (emp.status || '').toLowerCase().includes('leave') ? (
+                        'Set Active'
+                      ) : (
+                        'Mark Leave'
+                      )}
+                    </button>
                     <button
                       onClick={() => {
                         if (usingTeamFallback) {
