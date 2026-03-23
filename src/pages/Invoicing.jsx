@@ -348,7 +348,81 @@ export default function Invoicing() {
         user?.organization_name ||
         user?.organization?.name ||
         '';
+    const companyIdFromUser =
+        user?.companyId ||
+        user?.company_id ||
+        user?.organizationId ||
+        user?.organization_id ||
+        user?.organization?.id ||
+        user?.user?.companyId ||
+        user?.user?.company_id ||
+        '';
     const displayCompanyName = companyNameFromUser || 'NanoBooks';
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const extractInvoiceItems = (invoice) => {
+        if (!invoice || typeof invoice !== 'object') return [];
+        const possible = [
+            invoice.items,
+            invoice.lineItems,
+            invoice.line_items,
+            invoice.invoiceItems,
+            invoice.invoice_items
+        ];
+        const found = possible.find((arr) => Array.isArray(arr));
+        return Array.isArray(found) ? found : [];
+    };
+
+    const waitForInvoiceItemsReady = async (invoiceId) => {
+        const maxAttempts = 6;
+        for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+            try {
+                const latest = await api.invoices.getOne(invoiceId);
+                const invoice = latest?.data || latest;
+                if (extractInvoiceItems(invoice).length > 0) {
+                    return true;
+                }
+            } catch {
+                // keep retrying; backend may still be processing invoice details
+            }
+            await sleep(500);
+        }
+        return false;
+    };
+
+    const generateInvoiceNumber = () => {
+        const now = new Date();
+        const yy = String(now.getFullYear()).slice(-2);
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const millis = String(now.getTime()).slice(-6);
+        const rand = String(Math.floor(Math.random() * 900) + 100);
+        return `INV-${yy}${mm}${dd}-${millis}-${rand}`;
+    };
+
+    const createInvoiceWithUniqueNumber = async (baseInvoiceData) => {
+        const maxAttempts = 4;
+        for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+            const invoiceNumber = generateInvoiceNumber();
+            try {
+                const response = await api.invoices.create({
+                    ...baseInvoiceData,
+                    invoiceNumber
+                });
+                return { response, invoiceNumber };
+            } catch (error) {
+                const message = (error?.message || '').toLowerCase();
+                const isDuplicateInvoiceNumber =
+                    message.includes('unique_invoice_number_per_company') ||
+                    message.includes('duplicate key value');
+
+                if (!isDuplicateInvoiceNumber || attempt === maxAttempts - 1) {
+                    throw error;
+                }
+            }
+        }
+        throw new Error('Could not generate a unique invoice number. Please try again.');
+    };
 
     // Fetch customers and products on mount
     useEffect(() => {
@@ -440,12 +514,25 @@ export default function Invoicing() {
 
         const validItems = lineItems
             .filter(item => item.description.trim() && Number(item.qty) > 0)
-            .map(item => ({
-                description: item.description,
-                quantity: Number(item.qty),
-                rate: typeof item.rate === 'string' ? parseFloat(item.rate.replace(/[^0-9.-]+/g, "")) : item.rate,
-                taxPercentage: Number(item.tax)
-            }));
+            .map(item => {
+                const quantity = Number(item.qty);
+                const unitPrice = typeof item.rate === 'string'
+                    ? parseFloat(item.rate.replace(/[^0-9.-]+/g, ""))
+                    : Number(item.rate);
+                const taxRate = Number(item.tax);
+                return {
+                    description: item.description,
+                    quantity,
+                    qty: quantity,
+                    rate: unitPrice,
+                    unitPrice,
+                    price: unitPrice,
+                    taxPercentage: taxRate,
+                    taxRate,
+                    tax: taxRate,
+                    companyId: companyIdFromUser || undefined
+                };
+            });
 
         if (validItems.length === 0) {
             toast('Please add at least one valid item with quantity > 0', 'warning');
@@ -454,10 +541,11 @@ export default function Invoicing() {
 
         setSubmitting(true);
         try {
-            const invoiceData = {
+            const baseInvoiceData = {
                 customerId: customer.id,
                 customerName: customer.name,
-                invoiceNumber: `INV-${Date.now().toString().slice(-4)}`,
+                companyId: companyIdFromUser || undefined,
+                organizationId: companyIdFromUser || undefined,
                 issueDate: new Date().toISOString(),
                 dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
                 currency: currency,
@@ -470,9 +558,9 @@ export default function Invoicing() {
                 totalAmount: total
             };
 
-
-
-            const res = await api.invoices.create(invoiceData);
+            const { response, invoiceNumber } = await createInvoiceWithUniqueNumber(baseInvoiceData);
+            const invoiceData = { ...baseInvoiceData, invoiceNumber };
+            const res = response;
             const createdInvoice = res?.data || res;
 
             const pendingLocal = JSON.parse(localStorage.getItem(PENDING_SALES_INVOICES_KEY) || '[]');
@@ -487,6 +575,7 @@ export default function Invoicing() {
             localStorage.setItem(PENDING_SALES_INVOICES_KEY, JSON.stringify([localInvoice, ...pendingLocal].slice(0, 30)));
 
             if (createdInvoice && createdInvoice.id) {
+                await waitForInvoiceItemsReady(createdInvoice.id);
                 await api.invoices.send(createdInvoice.id);
                 toast('Invoice created and sent successfully!', 'success');
             } else {
