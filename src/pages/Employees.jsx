@@ -20,7 +20,7 @@ const normalizeEmployee = (emp) => ({
   email: emp.email || '-',
   role: emp.position || emp.role || 'Staff',
   department: emp.department || 'General',
-  status: emp.status || 'Active'
+  status: formatStatusLabel(emp.status)
 });
 
 const normalizeTeamMember = (member) => ({
@@ -29,8 +29,17 @@ const normalizeTeamMember = (member) => ({
   email: member.email || member.user?.email || '-',
   role: member.role || member.user?.role || 'Team Member',
   department: member.department || member.dept || 'Team',
-  status: member.status || (member.isActive === false ? 'Inactive' : 'Active')
+  status: formatStatusLabel(member.status || (member.isActive === false ? 'inactive' : 'active'))
 });
+
+function formatStatusLabel(rawStatus) {
+  const normalized = String(rawStatus || '').trim().toLowerCase().replace(/\s+/g, '_');
+  if (normalized === 'on_leave') return 'On Leave';
+  if (normalized === 'inactive') return 'Inactive';
+  if (normalized === 'terminated') return 'Terminated';
+  if (normalized === 'active') return 'Active';
+  return rawStatus || 'Active';
+}
 
 export default function EmployeesDashboard() {
   const navigate = useNavigate();
@@ -158,17 +167,28 @@ export default function EmployeesDashboard() {
     }
 
     const isOnLeave = (employee.status || '').toLowerCase().includes('leave');
-    const nextStatus = isOnLeave ? 'Active' : 'On Leave';
+    const nextStatusApi = isOnLeave ? 'active' : 'on_leave';
+    const nextStatusLabel = formatStatusLabel(nextStatusApi);
 
     setBusyAction(`status-${employee.id}`);
     try {
-      await api.employees.update(employee.id, { status: nextStatus });
+      try {
+        await api.employees.update(employee.id, { status: nextStatusApi });
+      } catch (primaryError) {
+        const primaryMsg = (primaryError.message || '').toLowerCase();
+        if (!primaryMsg.includes('bad request') && !primaryMsg.includes('invalid')) {
+          throw primaryError;
+        }
+        const fallbackStatus = isOnLeave ? 'Active' : 'On Leave';
+        await api.employees.update(employee.id, { status: fallbackStatus });
+      }
+
       setEmployees((prev) =>
         prev.map((emp) =>
-          emp.id === employee.id ? { ...emp, status: nextStatus } : emp
+          emp.id === employee.id ? { ...emp, status: nextStatusLabel } : emp
         )
       );
-      toast(`Status updated to ${nextStatus}`, 'success');
+      toast(`Status updated to ${nextStatusLabel}`, 'success');
     } catch (error) {
       toast(error.message || 'Failed to update leave status', 'error');
     } finally {
