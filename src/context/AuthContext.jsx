@@ -28,40 +28,33 @@ export const AuthProvider = ({ children }) => {
     };
 
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            // Validate token and get user profile
-            api.auth.getProfile()
-                .then(data => {
-                    setUser(data);
-                })
-                .catch(() => {
-                    localStorage.removeItem('token');
-                })
-                .finally(() => {
-                    setLoading(false);
-                });
-        } else {
-            setLoading(false);
-        }
+        // Try restoring an existing cookie session on app load.
+        api.auth.getProfile()
+            .then(data => {
+                setUser(data);
+            })
+            .catch(() => {
+                setUser(null);
+            })
+            .finally(() => {
+                setLoading(false);
+            });
     }, []);
 
     const login = async (email, password) => {
         const data = await api.auth.login({ email, password });
-        localStorage.setItem('token', data.token);
         setUser(data.user);
         return data;
     };
 
     const register = async (userData) => {
         const data = await api.auth.register(userData);
-        localStorage.setItem('token', data.token);
         setUser(data.user);
         return data;
     };
 
-    const logout = () => {
-        localStorage.removeItem('token');
+    const logout = async () => {
+        await api.auth.logout().catch(() => null);
         setUser(null);
     };
 

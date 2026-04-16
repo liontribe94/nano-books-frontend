@@ -1,16 +1,15 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const apiRequest = async (endpoint, options = {}) => {
-    const token = localStorage.getItem('token');
     const headers = {
         'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         ...options.headers,
     };
 
     const response = await fetch(`${BASE_URL}${endpoint}`, {
         ...options,
         headers,
+        credentials: 'include',
     });
 
     if (!response.ok) {
@@ -26,6 +25,7 @@ export const api = {
     auth: {
         login: (credentials) => apiRequest('/users/login', { method: 'POST', body: JSON.stringify(credentials) }),
         register: (data) => apiRequest('/users/register', { method: 'POST', body: JSON.stringify(data) }),
+        logout: () => apiRequest('/users/logout', { method: 'POST' }),
         getProfile: () => apiRequest('/users/profile'),
     },
 
