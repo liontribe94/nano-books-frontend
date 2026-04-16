@@ -37,6 +37,7 @@ function App() {
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Login />} />
+            <Route path="/forgot-password" element={<Login />} />
             <Route path="/accept-invite" element={<AcceptInvite />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsOfService />} />

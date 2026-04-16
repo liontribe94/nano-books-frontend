@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../components/ui/Toast';
 import { api } from '../lib/api';
@@ -156,7 +156,7 @@ export default function ProductDetail() {
                 <div>
                     <div className="flex items-center gap-2 text-xs text-slate-400 uppercase font-bold tracking-wider mb-2">
                         <button onClick={() => navigate('/inventory')} className="hover:text-primary transition-colors">Inventory</button>
-                        <span>�</span>
+                        <span>›</span>
                         <span>Product Detail</span>
                     </div>
                     <div className="flex items-center gap-3">
@@ -175,16 +175,16 @@ export default function ProductDetail() {
                 </button>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <StatCard label="In Stock" value={(product.stockQuantity || 0).toLocaleString()} icon={Package} />
                 <StatCard label="Cost Price" value={`$${(product.cost || 0).toFixed(2)}`} icon={DollarSign} iconColor="text-slate-400" />
                 <StatCard label="Selling Price" value={`$${(product.price || 0).toFixed(2)}`} icon={DollarSign} iconColor="text-emerald-500" />
                 <StatCard label="Reorder Point" value={product.reorderPoint || 5} icon={AlertTriangle} iconColor="text-amber-500" />
             </div>
 
-            <div className="flex gap-1 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex gap-1 border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
                 {tabs.map((tab, i) => (
-                    <button key={i} onClick={() => setActiveTab(i)} className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === i ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                    <button key={i} onClick={() => setActiveTab(i)} className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === i ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
                         {tab}
                     </button>
                 ))}
@@ -194,7 +194,7 @@ export default function ProductDetail() {
                 <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                     <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-3 justify-between items-center">
                         <h3 className="font-bold text-slate-800 dark:text-white">Movement Log</h3>
-                        <div className="relative w-44">
+                        <div className="relative w-full sm:w-44">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                             <input
                                 type="text"
@@ -206,8 +206,23 @@ export default function ProductDetail() {
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
+                    <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+                        {filteredMovements.length > 0 ? filteredMovements.map((m, i) => (
+                            <div key={i} className="p-4 space-y-2">
+                                <div className="flex items-center justify-between gap-3">
+                                    <p className="text-xs text-slate-500">{m.date}</p>
+                                    <TypeBadge type={m.type} />
+                                </div>
+                                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{m.reference}</p>
+                                <p className={`text-sm font-bold ${m.adjustment > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>{m.adjustment > 0 ? '+' : ''}{m.adjustment}</p>
+                            </div>
+                        )) : (
+                            <div className="px-5 py-12 text-center text-sm text-slate-400">No stock movements yet</div>
+                        )}
+                    </div>
+
+                    <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full text-left min-w-[680px]">
                             <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                                 <tr>
                                     <th className="px-5 py-3">Date</th>
@@ -254,3 +269,4 @@ export default function ProductDetail() {
         </div>
     );
 }
+

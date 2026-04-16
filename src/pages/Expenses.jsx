@@ -224,28 +224,58 @@ export default function Expenses() {
                                 className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                             />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 w-full sm:w-auto">
                             <button
                                 onClick={() => setStatusFilter((s) => s === 'all' ? 'pending' : s === 'pending' ? 'approved' : 'all')}
-                                className="flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                             >
                                 <Filter className="w-4 h-4" />
                                 Filter: {statusFilter}
                             </button>
-                            <button onClick={fetchExpenses} disabled={refreshing} className="flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-60">
+                            <button onClick={fetchExpenses} disabled={refreshing} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-60">
                                 <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                                 Refresh
                             </button>
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
+                    <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+                        {loading && (
+                            <div className="flex items-center justify-center py-20">
+                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                            </div>
+                        )}
+                        {!loading && filteredExpenses.map((expense, idx) => (
+                            <div key={expense.id || idx} className="p-4 space-y-3">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{expense.merchant}</p>
+                                        <p className="text-xs text-slate-500">#{expense.id}</p>
+                                    </div>
+                                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{formatCurrency(expense.amount)}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs text-slate-500">
+                                    <span>{new Date(expense.date).toLocaleDateString()}</span>
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{expense.category}</span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => handleViewExpense(expense.id)} className="flex-1 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">View</button>
+                                    <button onClick={() => handleDelete(expense.id)} className="flex-1 py-2 rounded-lg border border-rose-200 dark:border-rose-800 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20">Delete</button>
+                                </div>
+                            </div>
+                        ))}
+                        {!loading && filteredExpenses.length === 0 && (
+                            <div className="px-6 py-10 text-center text-slate-500">No expenses found</div>
+                        )}
+                    </div>
+
+                    <div className="hidden md:block overflow-x-auto">
                         {loading ? (
                             <div className="flex items-center justify-center py-20">
                                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
                             </div>
                         ) : (
-                            <table className="w-full text-left">
+                            <table className="w-full text-left min-w-[820px]">
                                 <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                                     <tr>
                                         <th className="px-6 py-4">Merchant</th>
@@ -283,5 +313,3 @@ export default function Expenses() {
         </div>
     );
 }
-
-

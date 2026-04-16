@@ -25,6 +25,7 @@ export const api = {
     auth: {
         login: (credentials) => apiRequest('/users/login', { method: 'POST', body: JSON.stringify(credentials) }),
         register: (data) => apiRequest('/users/register', { method: 'POST', body: JSON.stringify(data) }),
+        forgotPassword: (data) => apiRequest('/users/forgot-password', { method: 'POST', body: JSON.stringify(data) }),
         logout: () => apiRequest('/users/logout', { method: 'POST' }),
         getProfile: () => apiRequest('/users/profile'),
     },

@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
+import { api } from '../lib/api';
 import { Mail, Lock, User, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
     const location = useLocation();
     const isLogin = location.pathname === '/login';
+    const isForgotPassword = location.pathname === '/forgot-password';
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [formData, setFormData] = useState({
@@ -30,6 +32,13 @@ export default function Login() {
         e.preventDefault();
         setLoading(true);
         try {
+            if (isForgotPassword) {
+                await api.auth.forgotPassword({ email: formData.email });
+                toast('Password reset link sent. Please check your email.', 'success');
+                navigate('/login');
+                return;
+            }
+
             if (isLogin) {
                 await login(formData.email, formData.password);
                 toast('Welcome back!', 'success');
@@ -63,15 +72,19 @@ export default function Login() {
                             <span className="font-bold text-2xl tracking-tight text-slate-900 dark:text-white">Nano<span className="text-primary">Books</span></span>
                         </div>
                         <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-2">
-                            {isLogin ? 'Welcome back' : 'Create an account'}
+                            {isForgotPassword ? 'Reset your password' : isLogin ? 'Welcome back' : 'Create an account'}
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400">
-                            {isLogin ? 'Enter your details to access your account.' : 'Start your 14-day free trial today.'}
+                            {isForgotPassword
+                                ? 'Enter your email to receive a password reset link.'
+                                : isLogin
+                                    ? 'Enter your details to access your account.'
+                                    : 'Start your 14-day free trial today.'}
                         </p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-5">
-                        {!isLogin && (
+                        {!isLogin && !isForgotPassword && (
                             <>
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Full Name</label>
@@ -128,31 +141,44 @@ export default function Login() {
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Password</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                    <Lock className="h-5 w-5" />
+                        {!isForgotPassword && (
+                            <div>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
+                                    {isLogin && (
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate('/forgot-password')}
+                                            className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+                                        >
+                                            Forgot password?
+                                        </button>
+                                    )}
                                 </div>
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    name="password"
-                                    required
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    className="w-full pl-10 pr-10 py-3 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-base text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
-                                    placeholder="password"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword((prev) => !prev)}
-                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                >
-                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                                </button>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                        <Lock className="h-5 w-5" />
+                                    </div>
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        name="password"
+                                        required
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                        className="w-full pl-10 pr-10 py-3 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-base text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                                        placeholder="password"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword((prev) => !prev)}
+                                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                    >
+                                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         <button
                             type="submit"
@@ -163,7 +189,7 @@ export default function Login() {
                                 <Loader2 className="w-5 h-5 animate-spin" />
                             ) : (
                                 <>
-                                    {isLogin ? 'Sign In' : 'Create Account'}
+                                    {isForgotPassword ? 'Send Reset Link' : isLogin ? 'Sign In' : 'Create Account'}
                                     <ArrowRight className="w-4 h-4" />
                                 </>
                             )}
@@ -172,12 +198,16 @@ export default function Login() {
 
                     <div className="mt-8 text-center">
                         <p className="text-sm text-slate-500">
-                            {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
+                            {isForgotPassword
+                                ? 'Remember your password?'
+                                : isLogin
+                                    ? "Don't have an account?"
+                                    : 'Already have an account?'}{' '}
                             <button
-                                onClick={() => navigate(isLogin ? '/signup' : '/login')}
+                                onClick={() => navigate(isForgotPassword ? '/login' : isLogin ? '/signup' : '/login')}
                                 className="font-semibold text-primary hover:text-primary/80 transition-colors"
                             >
-                                {isLogin ? 'Sign up for free' : 'Sign in'}
+                                {isForgotPassword ? 'Back to sign in' : isLogin ? 'Sign up for free' : 'Sign in'}
                             </button>
                         </p>
                     </div>

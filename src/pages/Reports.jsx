@@ -168,18 +168,18 @@ export default function Reports() {
                         <ChevronDown className="w-3 h-3" />
                     </button>
                 </div>
-                <div className="flex items-center gap-3">
-                    <CurrencySelect />
-                    <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+                    <CurrencySelect className="w-full sm:w-auto" />
+                    <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 w-full sm:w-auto">
                         <button onClick={() => setViewMode('table')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'table' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500'}`}><Table2 className="w-3.5 h-3.5" /> Table</button>
                         <button onClick={() => setViewMode('chart')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'chart' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500'}`}><BarChart3 className="w-3.5 h-3.5" /> Chart</button>
                     </div>
-                    <button onClick={exportPdf} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"><Download className="w-4 h-4" /> Export</button>
-                    <button onClick={() => fetchReportData(period)} className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium shadow-sm shadow-primary/20 transition-all">Refresh</button>
+                    <button onClick={exportPdf} className="flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm w-full sm:w-auto"><Download className="w-4 h-4" /> Export</button>
+                    <button onClick={() => fetchReportData(period)} className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium shadow-sm shadow-primary/20 transition-all w-full sm:w-auto">Refresh</button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <StatCard label="Total Income" value={formatCurrency(stats.totalIncome)} change={stats.incomeChange} icon={TrendingUp} iconBg="bg-emerald-500" />
                 <StatCard label="Total Expenses" value={formatCurrency(stats.totalExpenses)} change={stats.expenseChange} icon={TrendingDown} iconBg="bg-rose-500" />
                 <StatCard label="Net Profit" value={formatCurrency(stats.netProfit)} change={stats.profitChange} icon={DollarSign} iconBg="bg-primary" />
@@ -228,8 +228,21 @@ export default function Reports() {
                             <button onClick={exportPdf} className="text-slate-400 hover:text-slate-600 transition-colors"><Download className="w-4 h-4" /></button>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
+                        <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+                            {financialDetails.map((row, i) => (
+                                <div key={i} className="p-4 space-y-2">
+                                    <p className="text-sm font-semibold text-slate-800 dark:text-white">{row.name}</p>
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                        <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-2"><p className="text-slate-400">Q1</p><p className="font-semibold text-slate-700 dark:text-slate-200">{row.q1}</p></div>
+                                        <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-2"><p className="text-slate-400">Q2</p><p className="font-semibold text-slate-700 dark:text-slate-200">{row.q2}</p></div>
+                                        <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-2"><p className="text-slate-400">Q3</p><p className="font-semibold text-slate-700 dark:text-slate-200">{row.q3}</p></div>
+                                        <div className="rounded-lg bg-primary/10 p-2"><p className="text-slate-400">Total</p><p className="font-bold text-slate-800 dark:text-white">{row.total}</p></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-left min-w-[680px]">
                                 <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                                     <tr><th className="px-5 py-3">Account Name</th><th className="px-5 py-3 text-right">Q1</th><th className="px-5 py-3 text-right">Q2</th><th className="px-5 py-3 text-right">Q3</th><th className="px-5 py-3 text-right">Total</th></tr>
                                 </thead>

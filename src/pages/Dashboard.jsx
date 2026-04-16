@@ -23,11 +23,11 @@ import {
     ShoppingCart
 } from 'lucide-react';
 
-const KPICard = ({ title, value, change, icon: Icon, trend, colorClass, bgClass }) => (
+const KPICard = ({ title, value, change, icon, trend, colorClass, bgClass }) => (
     <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
         <div className="flex justify-between items-start mb-4">
             <div className={`p-2 rounded-lg ${bgClass} ${colorClass}`}>
-                <Icon className="w-5 h-5" />
+                {React.createElement(icon, { className: 'w-5 h-5' })}
             </div>
             <span className={`flex items-center text-xs font-bold px-2 py-1 rounded-full ${bgClass} ${colorClass}`}>
                 {trend === 'up' ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
@@ -40,7 +40,7 @@ const KPICard = ({ title, value, change, icon: Icon, trend, colorClass, bgClass 
     </div>
 );
 
-const TransactionRow = ({ icon: Icon, name, subtext, date, category, amount, status }) => {
+const TransactionRow = ({ icon, name, subtext, date, category, amount, status }) => {
     const isPositive = amount.startsWith('+');
     const statusColors = {
         Cleared: 'text-emerald-600',
@@ -56,7 +56,7 @@ const TransactionRow = ({ icon: Icon, name, subtext, date, category, amount, sta
             <td className="px-6 py-4">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                        <Icon className="text-slate-400 w-4 h-4" />
+                        {React.createElement(icon, { className: 'text-slate-400 w-4 h-4' })}
                     </div>
                     <div>
                         <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{name}</p>
@@ -357,8 +357,32 @@ export default function Dashboard() {
                         View All History
                     </button>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+                <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+                    {transactions.map((tx, idx) => (
+                        <div key={idx} className="p-4 space-y-3">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                                        <tx.icon className="text-slate-400 w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{tx.name}</p>
+                                        <p className="text-xs text-slate-500 truncate">{tx.subtext}</p>
+                                    </div>
+                                </div>
+                                <span className={`text-sm font-bold whitespace-nowrap ${tx.amount.startsWith('+') ? 'text-emerald-600' : 'text-slate-800 dark:text-slate-200'}`}>{tx.amount}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-slate-500">
+                                <span>{tx.date}</span>
+                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded uppercase text-[10px] font-bold ${tx.category.bg} ${tx.category.text}`}>
+                                    {tx.category.label}
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left min-w-[780px]">
                         <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                             <tr>
                                 <th className="px-6 py-4">Transaction Details</th>

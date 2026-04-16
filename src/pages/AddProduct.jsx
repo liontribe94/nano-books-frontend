@@ -61,9 +61,7 @@ export default function AddProduct() {
             setTimeout(() => navigate('/inventory'), 800);
         } catch (error) {
             console.error('Failed to create product:', error);
-            // Fallback for demo if API fails
-            toast('Product added (Demo Mode)', 'success');
-            setTimeout(() => navigate('/inventory'), 1000);
+            toast(error.message || 'Failed to create product', 'error');
         } finally {
             setLoading(false);
         }

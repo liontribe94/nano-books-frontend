@@ -314,8 +314,41 @@ try {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+                <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+                    {filteredInvoices.map((invoice) => {
+                        const MobileStatusIcon = statusIcons[invoice.status] || Clock;
+                        return (
+                        <div key={invoice.backendId || invoice.displayId} className="p-4 space-y-3">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">#{invoice.displayId}</p>
+                                    <p className="text-xs text-slate-500 truncate">{invoice.client}</p>
+                                </div>
+                                <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{formatCurrency(invoice.amount)}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-slate-500">
+                                <span>{invoice.date}</span>
+                                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${statusStyles[invoice.status] || statusStyles.draft}`}>
+                                    <MobileStatusIcon className="w-3.5 h-3.5" />
+                                    {invoice.status}
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => handleQuickAction(invoice)}
+                                disabled={actionLoadingId === invoice.backendId}
+                                className="w-full py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-60"
+                            >
+                                {actionLoadingId === invoice.backendId ? 'Processing...' : 'Run Action'}
+                            </button>
+                        </div>
+                    )})}
+                    {filteredInvoices.length === 0 && (
+                        <div className="px-6 py-10 text-center text-slate-500">No invoices found</div>
+                    )}
+                </div>
+
+                <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left min-w-[760px]">
                         <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                             <tr>
                                 <th className="px-6 py-4">Invoice ID</th>
@@ -346,5 +379,3 @@ try {
         </div>
     );
 }
-
-
